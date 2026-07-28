@@ -27,7 +27,7 @@ const (
 	ReasonBurstSlow  Reason = "burst-slow"
 )
 
-// ProviderDirective is the minimal provider routing shape BurstyRouter needs.
+// ProviderDirective is the minimal provider routing shape HybridRouter needs.
 type ProviderDirective struct {
 	Only  stringList `json:"only"`
 	Order stringList `json:"order"`
@@ -140,7 +140,7 @@ type Decision struct {
 }
 
 // ConfigError is returned when the request explicitly requires an upstream
-// that is not configured. Callers should surface it as a Bursty-origin routing
+// that is not configured. Callers should surface it as a Hybrid-origin routing
 // error, not as a JSON decode failure.
 type ConfigError struct {
 	Route   Route
@@ -263,7 +263,7 @@ func DecideTrustedRouterOnly(raw []byte) (Decision, error) {
 }
 
 // DecodeRequestView validates the top-level routing object and decodes the
-// fields needed by BurstyRouter policy.
+// fields needed by HybridRouter policy.
 func DecodeRequestView(raw []byte) (RequestView, error) {
 	if _, err := scanTopLevelObject(raw); err != nil {
 		return RequestView{}, err

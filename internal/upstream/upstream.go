@@ -16,7 +16,7 @@ import (
 )
 
 // localDialTimeout bounds dead local-rig SYN attempts so saturated local routes
-// free Bursty slots quickly instead of waiting on OS TCP defaults.
+// free Hybrid slots quickly instead of waiting on OS TCP defaults.
 const localDialTimeout = 3 * time.Second
 
 // Local is an OpenAI-compatible local upstream.
@@ -120,7 +120,7 @@ func NewTrustedRouter(apiKey, baseURL string) (*TrustedRouter, error) {
 // NewTrustedRouterWithHTTPClient constructs a TrustedRouter upstream with a
 // caller-supplied client. A nil client lets the SDK use its default client.
 func NewTrustedRouterWithHTTPClient(apiKey, baseURL string, httpClient *http.Client) (*TrustedRouter, error) {
-	// BurstyRouter is a proxy: inbound clients own retries, and SSE streams
+	// HybridRouter is a proxy: inbound clients own retries, and SSE streams
 	// must live as long as the inbound request context waits.
 	client, err := trustedrouter.NewClient(trustedrouter.Options{
 		APIKey:     apiKey,

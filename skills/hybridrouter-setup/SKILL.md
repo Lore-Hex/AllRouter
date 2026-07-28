@@ -1,9 +1,9 @@
 ---
-name: bursty-setup
-description: Interactively set up BurstyRouter. Use when a user asks to set up burstyrouter, wire bursty into Cursor, expose my local model, publish a local model through ngrok, configure Claude Code or Anthropic SDKs with BurstyRouter, configure aider, OpenAI SDKs, Codex CLI, or OpenHands with BurstyRouter, or burst local requests to TrustedRouter.
+name: hybridrouter-setup
+description: Interactively set up HybridRouter or its BackupRouter mode. Use when a user asks to combine local and cloud models, give Claude Code Kimi or GLM fallbacks, wire HybridRouter into Cursor, expose a local model, configure Claude Code or Anthropic SDKs, configure aider, OpenAI SDKs, Codex CLI, or OpenHands, or burst local requests to TrustedRouter.
 ---
 
-# BurstyRouter Setup
+# HybridRouter Setup
 
 Guide the user through setup interactively. Ask for the missing choice, then emit only the relevant copy-paste blocks.
 
@@ -11,7 +11,7 @@ Guide the user through setup interactively. Ask for the missing choice, then emi
 
 Ask:
 
-1. Which run mode: Ollama local-only, local plus TrustedRouter burst, or TrustedRouter-only?
+1. Which run mode: BackupRouter for Claude Code, Ollama local-only, local plus TrustedRouter burst, or TrustedRouter-only?
 2. Is the harness remote and unable to reach localhost? If yes, include ngrok.
 3. Which harness: Cursor, Claude Code / Anthropic SDKs, aider / OpenAI SDKs / Codex CLI / OpenHands, or generic OpenAI-compatible?
 
@@ -29,52 +29,52 @@ Install:
 
 ```bash
 brew tap Lore-Hex/homebrew-tap
-brew install burstyrouter
+brew install hybridrouter
 ```
 
 If Homebrew is not desired, tell the user to download the latest release binary from:
 
 ```text
-https://github.com/Lore-Hex/BurstyRouter/releases/latest
+https://github.com/Lore-Hex/HybridRouter/releases/latest
 ```
 
 Other install paths:
 
 ```bash
-go install github.com/Lore-Hex/BurstyRouter/cmd/burstyrouter@latest
-docker build -t burstyrouter:local .
+go install github.com/Lore-Hex/HybridRouter/cmd/hybridrouter@latest
+docker build -t hybridrouter:local .
 ```
 
 Ollama local-only:
 
 ```bash
-burstyrouter
+hybridrouter
 ```
 
 Local plus TrustedRouter burst:
 
 ```bash
 export TRUSTEDROUTER_API_KEY="tr_..."
-burstyrouter -tr-api-key "$TRUSTEDROUTER_API_KEY"
+hybridrouter -tr-api-key "$TRUSTEDROUTER_API_KEY"
 ```
 
 Local plus aliases for cloud-facing model names:
 
 ```bash
 export TRUSTEDROUTER_API_KEY="tr_..."
-burstyrouter -local-url http://127.0.0.1:11434 \
+hybridrouter -local-url http://127.0.0.1:11434 \
   -tr-api-key "$TRUSTEDROUTER_API_KEY" \
   -alias gpt-4o=llama3.2 \
   -alias anthropic/claude-haiku-4.5=qwen2.5-coder:32b \
   -savings-reference gpt-4o
 ```
 
-Explain briefly when aliases are shown: the savings number is an honest counterfactual from TrustedRouter catalog prices. With aliases, the alias key is the preferred price reference; `-savings-reference` is the fallback for local-native names. Without a catalog price anchor, BurstyRouter reports tokens only and no saved dollars.
+Explain briefly when aliases are shown: the savings number is an honest counterfactual from TrustedRouter catalog prices. With aliases, the alias key is the preferred price reference; `-savings-reference` is the fallback for local-native names. Without a catalog price anchor, HybridRouter reports tokens only and no saved dollars.
 
 To burst unmapped local-native model ids, add a fallback model:
 
 ```bash
-burstyrouter -local-url http://127.0.0.1:11434 \
+hybridrouter -local-url http://127.0.0.1:11434 \
   -tr-api-key "$TRUSTEDROUTER_API_KEY" \
   -burst-fallback-model openai/gpt-4o-mini
 ```
@@ -83,31 +83,43 @@ TrustedRouter-only:
 
 ```bash
 export TRUSTEDROUTER_API_KEY="tr_..."
-burstyrouter -no-autodetect -tr-api-key "$TRUSTEDROUTER_API_KEY"
+hybridrouter -no-autodetect -tr-api-key "$TRUSTEDROUTER_API_KEY"
 ```
+
+BackupRouter for Claude Code:
+
+```bash
+export TRUSTEDROUTER_API_KEY="tr_..."
+hybridrouter -preset backuprouter -no-autodetect
+```
+
+Explain that the Claude model requested by Claude Code stays first. The default
+fallback order is `moonshotai/kimi-k3`, then `z-ai/glm-5.2`. Repeat
+`-backup-model` to customize it. Never replace an explicit request `models`
+array.
 
 Verify local process:
 
 ```bash
-export BURSTY_HOST="http://127.0.0.1:8383"
-curl -fsS "$BURSTY_HOST/healthz"
-curl -fsS "$BURSTY_HOST/ui" >/dev/null
-curl -fsS "$BURSTY_HOST/v1/models"
-curl -is "$BURSTY_HOST/v1/chat/completions" \
+export HYBRID_HOST="http://127.0.0.1:8383"
+curl -fsS "$HYBRID_HOST/healthz"
+curl -fsS "$HYBRID_HOST/ui" >/dev/null
+curl -fsS "$HYBRID_HOST/v1/models"
+curl -is "$HYBRID_HOST/v1/chat/completions" \
   -H "Content-Type: application/json" \
   -d '{"model":"local/llama3.2","messages":[{"role":"user","content":"ping"}]}' \
-  | awk 'BEGIN{found=0} /^X-Bursty-Route:/ {print; found=1} END{exit found?0:1}'
+  | awk 'BEGIN{found=0} /^X-Hybrid-Route:/ {print; found=1} END{exit found?0:1}'
 ```
 
-Tell the user to open `$BURSTY_HOST/ui` as the "it's working" screen. It is read-only and shows the savings odometer plus recent routing decisions.
+Tell the user to open `$HYBRID_HOST/ui` as the "it's working" screen. It is read-only and shows the savings odometer plus recent routing decisions.
 
 ## Ngrok
 
-Use ngrok only for a remote harness. Strongly instruct the user to set `BURSTY_TOKEN` whenever BurstyRouter is internet-exposed.
+Use ngrok only for a remote harness. Strongly instruct the user to set `HYBRID_TOKEN` whenever HybridRouter is internet-exposed.
 
 ```bash
-export BURSTY_TOKEN="$(openssl rand -hex 24)"
-burstyrouter -local-url http://127.0.0.1:11434 -tr-api-key "$TRUSTEDROUTER_API_KEY" -token "$BURSTY_TOKEN"
+export HYBRID_TOKEN="$(openssl rand -hex 24)"
+hybridrouter -local-url http://127.0.0.1:11434 -tr-api-key "$TRUSTEDROUTER_API_KEY" -token "$HYBRID_TOKEN"
 ```
 
 ```bash
@@ -124,11 +136,11 @@ ngrok http --domain=<your-domain>.ngrok.app 8383
 Token verification:
 
 ```bash
-export BURSTY_HOST="https://<your-domain>.ngrok.app"
-curl -fsS -H "Authorization: Bearer $BURSTY_TOKEN" "$BURSTY_HOST/v1/models"
+export HYBRID_HOST="https://<your-domain>.ngrok.app"
+curl -fsS -H "Authorization: Bearer $HYBRID_TOKEN" "$HYBRID_HOST/v1/models"
 ```
 
-`x-api-key: $BURSTY_TOKEN` is also accepted for Anthropic-family clients.
+`x-api-key: $HYBRID_TOKEN` is also accepted for Anthropic-family clients.
 
 ## Other Burst Targets
 
@@ -136,12 +148,12 @@ TrustedRouter is the default burst target, but `-tr-base-url` can point at any b
 
 ```bash
 export TRUSTEDROUTER_API_KEY="<upstream bearer token>"
-burstyrouter -local-url http://127.0.0.1:11434 \
+hybridrouter -local-url http://127.0.0.1:11434 \
   -tr-api-key "$TRUSTEDROUTER_API_KEY" \
   -tr-base-url "https://openrouter.ai/api/v1"
 ```
 
-If that upstream lacks `/v1/messages` or `/v1/responses`, BurstyRouter returns a clean `501 endpoint_not_supported` envelope for cloud passthrough requests. Aliased local `/v1/messages` requests do not require the burst upstream to support Anthropic Messages.
+If that upstream lacks `/v1/messages` or `/v1/responses`, HybridRouter returns a clean `501 endpoint_not_supported` envelope for cloud passthrough requests. Aliased local `/v1/messages` requests do not require the burst upstream to support Anthropic Messages.
 
 ## Cloud Controls
 
@@ -149,13 +161,13 @@ Mention these only when the user asks about cost, safety, disabling cloud, or st
 
 ```bash
 # No automatic bursts; only explicit non-local provider requests can use cloud.
-burstyrouter -local-url http://127.0.0.1:11434 -tr-api-key "$TRUSTEDROUTER_API_KEY" -cloud explicit
+hybridrouter -local-url http://127.0.0.1:11434 -tr-api-key "$TRUSTEDROUTER_API_KEY" -cloud explicit
 
 # Disable cloud entirely.
-burstyrouter -local-url http://127.0.0.1:11434 -tr-api-key "$TRUSTEDROUTER_API_KEY" -cloud off
+hybridrouter -local-url http://127.0.0.1:11434 -tr-api-key "$TRUSTEDROUTER_API_KEY" -cloud off
 
 # Cap priced cloud spend per UTC day. Unpriced cloud usage counts $0 toward the cap.
-burstyrouter -local-url http://127.0.0.1:11434 -tr-api-key "$TRUSTEDROUTER_API_KEY" -max-cloud-spend 1.00
+hybridrouter -local-url http://127.0.0.1:11434 -tr-api-key "$TRUSTEDROUTER_API_KEY" -max-cloud-spend 1.00
 ```
 
 ## Harness Wiring
@@ -169,7 +181,7 @@ Tell the user:
 ```text
 Settings -> Models -> OpenAI API override
 Base URL: https://<host>/v1
-API key: $BURSTY_TOKEN, or any string when BURSTY_TOKEN is unset
+API key: $HYBRID_TOKEN, or any string when HYBRID_TOKEN is unset
 Models: local/llama3.2, anthropic/claude-haiku-4.5
 ```
 
@@ -183,47 +195,65 @@ Verify:
 
 ```bash
 curl -is "https://<host>/v1/chat/completions" \
-  -H "Authorization: Bearer $BURSTY_TOKEN" \
+  -H "Authorization: Bearer $HYBRID_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"model":"local/llama3.2","messages":[{"role":"user","content":"ping"}]}' \
-  | awk 'BEGIN{found=0} /^X-Bursty-Route:/ {print; found=1} END{exit found?0:1}'
+  | awk 'BEGIN{found=0} /^X-Hybrid-Route:/ {print; found=1} END{exit found?0:1}'
 ```
 
-### Claude Code On Your GPU / Anthropic SDKs
+### Claude Code / Anthropic SDKs
 
-BurstyRouter can run Claude Code against your local OpenAI-compatible model by translating Anthropic `/v1/messages` to local `/v1/chat/completions`. Show an alias from the Claude model id the client sends to the local model name:
+For the recommended BackupRouter path, show:
 
 ```bash
 export TRUSTEDROUTER_API_KEY="tr_..."
-burstyrouter -local-url http://127.0.0.1:11434 \
+hybridrouter -preset backuprouter -no-autodetect
+```
+
+```bash
+export ANTHROPIC_BASE_URL="https://<host>"
+export ANTHROPIC_AUTH_TOKEN="${HYBRID_TOKEN:-hybridrouter-local}"
+export ANTHROPIC_MODEL="anthropic/claude-sonnet-5"
+export ANTHROPIC_SMALL_FAST_MODEL="anthropic/claude-haiku-4.5"
+claude
+```
+
+If the user specifically wants local Claude Code, HybridRouter can translate
+Anthropic `/v1/messages` to local `/v1/chat/completions`. Show an alias from
+the Claude model id the client sends to the local model name:
+
+```bash
+export TRUSTEDROUTER_API_KEY="tr_..."
+hybridrouter -local-url http://127.0.0.1:11434 \
   -tr-api-key "$TRUSTEDROUTER_API_KEY" \
   -alias anthropic/claude-haiku-4.5=qwen2.5-coder:32b
 ```
 
-Tell the user to put their exact Claude Code model id on the left side of `-alias`. When local is full or failing and cloud egress is allowed, BurstyRouter bursts the original Anthropic body to TrustedRouter.
+Tell the user to put their exact Claude Code model id on the left side of `-alias`. When local is full or failing and cloud egress is allowed, HybridRouter bursts the original Anthropic body to TrustedRouter.
 
 ```bash
 export ANTHROPIC_BASE_URL="https://<host>"
-export ANTHROPIC_API_KEY="${BURSTY_TOKEN:-any-string}"
+export ANTHROPIC_AUTH_TOKEN="${HYBRID_TOKEN:-hybridrouter-local}"
+export ANTHROPIC_MODEL="anthropic/claude-haiku-4.5"
 ```
 
-These clients send `x-api-key`; BurstyRouter accepts it when `BURSTY_TOKEN` is set.
+These clients send `x-api-key`; HybridRouter accepts it when `HYBRID_TOKEN` is set.
 
 Verify:
 
 ```bash
 curl -is "https://<host>/v1/messages" \
-  -H "x-api-key: $BURSTY_TOKEN" \
+  -H "x-api-key: $HYBRID_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"model":"anthropic/claude-haiku-4.5","max_tokens":16,"messages":[{"role":"user","content":"ping"}]}' \
-  | awk 'BEGIN{found=0} /^X-Bursty-Route:/ {print; found=1} END{exit found?0:1}'
+  | awk 'BEGIN{found=0} /^X-Hybrid-Route:/ {print; found=1} END{exit found?0:1}'
 ```
 
 ### Aider / OpenAI SDKs / Codex CLI / OpenHands
 
 ```bash
 export OPENAI_BASE_URL="https://<host>/v1"
-export OPENAI_API_KEY="${BURSTY_TOKEN:-any-string}"
+export OPENAI_API_KEY="${HYBRID_TOKEN:-any-string}"
 ```
 
 Older OpenAI-compatible tools may use:
@@ -236,21 +266,21 @@ Verify:
 
 ```bash
 curl -is "https://<host>/v1/chat/completions" \
-  -H "Authorization: Bearer $BURSTY_TOKEN" \
+  -H "Authorization: Bearer $HYBRID_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"model":"local/llama3.2","messages":[{"role":"user","content":"ping"}]}' \
-  | awk 'BEGIN{found=0} /^X-Bursty-Route:/ {print; found=1} END{exit found?0:1}'
+  | awk 'BEGIN{found=0} /^X-Hybrid-Route:/ {print; found=1} END{exit found?0:1}'
 ```
 
 ### Generic OpenAI-Compatible
 
 ```text
 Base URL: https://<host>/v1
-API key: $BURSTY_TOKEN, or any string when BURSTY_TOKEN is unset
+API key: $HYBRID_TOKEN, or any string when HYBRID_TOKEN is unset
 Model: local/<local-model>, an alias id such as gpt-4o, or a TrustedRouter model
 ```
 
-Verify with `/v1/chat/completions` and assert `X-Bursty-Route` is present.
+Verify with `/v1/chat/completions` and assert `X-Hybrid-Route` is present.
 
 ## Routing Cheatsheet
 
@@ -275,7 +305,7 @@ Force TrustedRouter with a non-local provider:
 Alias cloud id to local model:
 
 ```bash
-burstyrouter -local-url http://127.0.0.1:11434 \
+hybridrouter -local-url http://127.0.0.1:11434 \
   -alias gpt-4o=llama3.2 \
   -savings-reference gpt-4o
 ```
@@ -291,14 +321,14 @@ Bursting:
 Read routing:
 
 ```bash
-curl -fsS -H "Authorization: Bearer $BURSTY_TOKEN" "$BURSTY_HOST/stats"
+curl -fsS -H "Authorization: Bearer $HYBRID_TOKEN" "$HYBRID_HOST/stats"
 ```
 
 Headers:
 
 ```http
-X-Bursty-Route: local
-X-Bursty-Reason: policy
+X-Hybrid-Route: local
+X-Hybrid-Reason: policy
 ```
 
 Reasons: `policy`, `forced`, `burst-full`, `burst-error`.

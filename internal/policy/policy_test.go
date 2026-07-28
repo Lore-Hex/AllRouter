@@ -389,7 +389,7 @@ func TestDecideRejectsNonCanonicalTopLevelKeys(t *testing.T) {
 	t.Parallel()
 
 	// encoding/json matches fields case-insensitively; the raw splice is
-	// exact-case. A non-canonical spelling of a key Bursty reads/rewrites would
+	// exact-case. A non-canonical spelling of a key Hybrid reads/rewrites would
 	// let the routing decision and the body rewrite disagree, so it is rejected.
 	for _, raw := range [][]byte{
 		[]byte(`{"model":"openai/gpt-4o","Model":"local/qwen","messages":[]}`),
@@ -563,7 +563,7 @@ func TestDecideTrustedRouterOnly(t *testing.T) {
 func TestDecideRejectsDuplicateTopLevelKeys(t *testing.T) {
 	t.Parallel()
 
-	// Duplicate occurrences of any key BurstyRouter reads or rewrites are
+	// Duplicate occurrences of any key HybridRouter reads or rewrites are
 	// ambiguous (last-wins decoders vs first-occurrence splicing), so they are
 	// refused rather than folded/rewritten into a corrupted body.
 	for _, raw := range [][]byte{
@@ -635,13 +635,61 @@ func TestRawSpliceHelpers(t *testing.T) {
 		assertJSONEqual(t, got, []byte(`{"model":"llama\"3","messages":[]}`))
 	})
 
-	t.Run("inject bursty object", func(t *testing.T) {
+	t.Run("inject hybridrouter object", func(t *testing.T) {
 		t.Parallel()
-		got, err := InjectTopLevelObject([]byte(`{"id":"abc"}`), "bursty", []byte(`{"route":"local","reason":"policy"}`))
+		got, err := InjectTopLevelObject([]byte(`{"id":"abc"}`), "hybrid", []byte(`{"route":"local","reason":"policy"}`))
 		if err != nil {
 			t.Fatalf("InjectTopLevelObject() error = %v", err)
 		}
-		assertJSONEqual(t, got, []byte(`{"id":"abc","bursty":{"route":"local","reason":"policy"}}`))
+		assertJSONEqual(t, got, []byte(`{"id":"abc","hybrid":{"route":"local","reason":"policy"}}`))
+	})
+}
+
+func TestAddFallbackModels(t *testing.T) {
+	t.Parallel()
+
+	t.Run("adds ordered fallbacks after primary", func(t *testing.T) {
+		t.Parallel()
+		got, err := AddFallbackModels(
+			[]byte(`{"model":"anthropic/claude-sonnet-5","messages":[]}`),
+			[]string{"moonshotai/kimi-k3", "z-ai/glm-5.2"},
+		)
+		if err != nil {
+			t.Fatalf("AddFallbackModels() error = %v", err)
+		}
+		assertJSONEqual(t, got, []byte(`{
+			"model":"anthropic/claude-sonnet-5",
+			"messages":[],
+			"models":["moonshotai/kimi-k3","z-ai/glm-5.2"]
+		}`))
+	})
+
+	t.Run("caller models win byte for byte", func(t *testing.T) {
+		t.Parallel()
+		raw := []byte("{\n  \"model\":\"anthropic/claude-sonnet-5\",\n  \"models\":[],\n  \"messages\":[]\n}")
+		got, err := AddFallbackModels(raw, []string{"moonshotai/kimi-k3"})
+		if err != nil {
+			t.Fatalf("AddFallbackModels() error = %v", err)
+		}
+		if !bytes.Equal(got, raw) {
+			t.Fatalf("body changed:\n%s\nwant:\n%s", got, raw)
+		}
+	})
+
+	t.Run("dedupes primary and configured list", func(t *testing.T) {
+		t.Parallel()
+		got, err := AddFallbackModels(
+			[]byte(`{"model":"moonshotai/kimi-k3","messages":[]}`),
+			[]string{"moonshotai/kimi-k3", "z-ai/glm-5.2", "z-ai/glm-5.2"},
+		)
+		if err != nil {
+			t.Fatalf("AddFallbackModels() error = %v", err)
+		}
+		assertJSONEqual(t, got, []byte(`{
+			"model":"moonshotai/kimi-k3",
+			"messages":[],
+			"models":["z-ai/glm-5.2"]
+		}`))
 	})
 }
 

@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Lore-Hex/BurstyRouter/internal/config"
+	"github.com/Lore-Hex/HybridRouter/internal/config"
 )
 
 type cloudControl struct {
@@ -52,5 +52,5 @@ func (c *cloudControl) LogBudgetBlockOnce(now time.Time, capMicro int64) {
 		return
 	}
 	c.budgetLogDay = day
-	log.Printf("bursty cloud: daily cloud spend budget exhausted for %s (cap $%s; unpriced cloud usage counts $0 toward the cap)", day, formatUSDLog(capMicro))
+	log.Printf("hybridrouter cloud: daily cloud spend budget exhausted for %s (cap $%s; unpriced cloud usage counts $0 toward the cap)", day, formatUSDLog(capMicro))
 }

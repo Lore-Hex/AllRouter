@@ -27,38 +27,38 @@ func (s *Server) handleMetrics(w http.ResponseWriter, r *http.Request) {
 func (s *Server) metricsText() string {
 	var b strings.Builder
 
-	writePromHelpType(&b, "bursty_requests_total", "Total routed requests accepted by BurstyRouter.", "counter")
-	writePromInt(&b, "bursty_requests_total", "", s.stats.requestsTotal.Value())
+	writePromHelpType(&b, "hybrid_requests_total", "Total routed requests accepted by HybridRouter.", "counter")
+	writePromInt(&b, "hybrid_requests_total", "", s.stats.requestsTotal.Value())
 
-	writePromHelpType(&b, "bursty_in_flight_local", "Current requests occupying local upstream slots.", "gauge")
-	writePromInt(&b, "bursty_in_flight_local", "", s.stats.inFlightLocal.Value())
+	writePromHelpType(&b, "hybrid_in_flight_local", "Current requests occupying local upstream slots.", "gauge")
+	writePromInt(&b, "hybrid_in_flight_local", "", s.stats.inFlightLocal.Value())
 
-	writePromHelpType(&b, "bursty_route_total", "Total completed upstream responses by route.", "counter")
-	writePromInt(&b, "bursty_route_total", `{route="local"}`, s.stats.routes.local.Value())
-	writePromInt(&b, "bursty_route_total", `{route="trustedrouter"}`, s.stats.routes.tr.Value())
+	writePromHelpType(&b, "hybrid_route_total", "Total completed upstream responses by route.", "counter")
+	writePromInt(&b, "hybrid_route_total", `{route="local"}`, s.stats.routes.local.Value())
+	writePromInt(&b, "hybrid_route_total", `{route="trustedrouter"}`, s.stats.routes.tr.Value())
 
-	writePromHelpType(&b, "bursty_bursts_total", "Total burst outcomes by reason.", "counter")
-	writePromInt(&b, "bursty_bursts_total", `{reason="full"}`, s.stats.burstsFull.Value())
-	writePromInt(&b, "bursty_bursts_total", `{reason="error"}`, s.stats.burstsError.Value())
-	writePromInt(&b, "bursty_bursts_total", `{reason="skipped_unmapped"}`, s.stats.burstsSkippedUnmapped.Value())
+	writePromHelpType(&b, "hybrid_bursts_total", "Total burst outcomes by reason.", "counter")
+	writePromInt(&b, "hybrid_bursts_total", `{reason="full"}`, s.stats.burstsFull.Value())
+	writePromInt(&b, "hybrid_bursts_total", `{reason="error"}`, s.stats.burstsError.Value())
+	writePromInt(&b, "hybrid_bursts_total", `{reason="skipped_unmapped"}`, s.stats.burstsSkippedUnmapped.Value())
 
 	savings := collectSavingsMetrics(s.savings)
-	writePromHelpType(&b, "bursty_saved_usd_total", "Estimated cumulative USD saved by local routing.", "counter")
-	writePromFloat(&b, "bursty_saved_usd_total", "", savings.savedUSD)
+	writePromHelpType(&b, "hybrid_saved_usd_total", "Estimated cumulative USD saved by local routing.", "counter")
+	writePromFloat(&b, "hybrid_saved_usd_total", "", savings.savedUSD)
 
-	writePromHelpType(&b, "bursty_cloud_spend_usd_total", "Estimated cumulative USD spent on cloud routing.", "counter")
-	writePromFloat(&b, "bursty_cloud_spend_usd_total", "", savings.cloudSpendUSD)
+	writePromHelpType(&b, "hybrid_cloud_spend_usd_total", "Estimated cumulative USD spent on cloud routing.", "counter")
+	writePromFloat(&b, "hybrid_cloud_spend_usd_total", "", savings.cloudSpendUSD)
 
-	writePromHelpType(&b, "bursty_local_tokens_total", "Total local tokens by usage kind.", "counter")
-	writePromInt(&b, "bursty_local_tokens_total", `{kind="prompt"}`, savings.localPromptTokens)
-	writePromInt(&b, "bursty_local_tokens_total", `{kind="completion"}`, savings.localCompletionTokens)
+	writePromHelpType(&b, "hybrid_local_tokens_total", "Total local tokens by usage kind.", "counter")
+	writePromInt(&b, "hybrid_local_tokens_total", `{kind="prompt"}`, savings.localPromptTokens)
+	writePromInt(&b, "hybrid_local_tokens_total", `{kind="completion"}`, savings.localCompletionTokens)
 
-	writePromHelpType(&b, "bursty_usage_unknown_total", "Total responses where token usage was unavailable.", "counter")
-	writePromInt(&b, "bursty_usage_unknown_total", "", savings.usageUnknownTotal)
+	writePromHelpType(&b, "hybrid_usage_unknown_total", "Total responses where token usage was unavailable.", "counter")
+	writePromInt(&b, "hybrid_usage_unknown_total", "", savings.usageUnknownTotal)
 
-	writePromHelpType(&b, "bursty_cloud_blocked_total", "Total cloud sends blocked by reason.", "counter")
-	writePromInt(&b, "bursty_cloud_blocked_total", `{reason="budget"}`, s.stats.cloudBlockedBudget.Value())
-	writePromInt(&b, "bursty_cloud_blocked_total", `{reason="mode"}`, s.stats.cloudBlockedMode.Value())
+	writePromHelpType(&b, "hybrid_cloud_blocked_total", "Total cloud sends blocked by reason.", "counter")
+	writePromInt(&b, "hybrid_cloud_blocked_total", `{reason="budget"}`, s.stats.cloudBlockedBudget.Value())
+	writePromInt(&b, "hybrid_cloud_blocked_total", `{reason="mode"}`, s.stats.cloudBlockedMode.Value())
 
 	return b.String()
 }
