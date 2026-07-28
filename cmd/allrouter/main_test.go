@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Lore-Hex/HybridRouter/internal/config"
-	"github.com/Lore-Hex/HybridRouter/internal/proxy"
+	"github.com/Lore-Hex/AllRouter/internal/config"
+	"github.com/Lore-Hex/AllRouter/internal/proxy"
 )
 
 func TestPrintBootBannerGolden(t *testing.T) {
@@ -35,7 +35,7 @@ func TestPrintBootBannerGolden(t *testing.T) {
 
 	got := out.String()
 	for _, want := range []string{
-		"HybridRouter v1.2.3",
+		"AllRouter v1.2.3",
 		"local: detected Ollama at http://127.0.0.1:11434/v1 (3 models)",
 		"cloud: api.quillrouter.com",
 		"mode: cloud=explicit, max-cloud-spend=$1.250000/day",

@@ -1,25 +1,25 @@
-# HybridRouter Setup
+# AllRouter Setup
 
-This is the linear reference. For an interactive agent flow, use `skills/hybridrouter-setup/SKILL.md`.
+This is the linear reference. For an interactive agent flow, use `skills/allrouter-setup/SKILL.md`.
 
 ## 1. Install
 
 ```bash
 brew tap Lore-Hex/homebrew-tap
-brew install hybridrouter
+brew install allrouter
 ```
 
 Or download the latest release binary:
 
 ```text
-https://github.com/Lore-Hex/HybridRouter/releases/latest
+https://github.com/Lore-Hex/AllRouter/releases/latest
 ```
 
 Other install paths:
 
 ```bash
-go install github.com/Lore-Hex/HybridRouter/cmd/hybridrouter@latest
-docker build -t hybridrouter:local .
+go install github.com/Lore-Hex/AllRouter/cmd/allrouter@latest
+docker build -t allrouter:local .
 ```
 
 ## 2. Run
@@ -27,54 +27,54 @@ docker build -t hybridrouter:local .
 Local-only with Ollama, LM Studio, llama.cpp, or vLLM on a common localhost port:
 
 ```bash
-hybridrouter
+allrouter
 ```
 
 Local plus TrustedRouter burst:
 
 ```bash
 export TRUSTEDROUTER_API_KEY="tr_..."
-hybridrouter -tr-api-key "$TRUSTEDROUTER_API_KEY"
+allrouter -tr-api-key "$TRUSTEDROUTER_API_KEY"
 ```
 
 Explicit local URL:
 
 ```bash
-hybridrouter -local-url http://127.0.0.1:11434
+allrouter -local-url http://127.0.0.1:11434
 ```
 
 Local plus aliases for tool-facing cloud model names:
 
 ```bash
 export TRUSTEDROUTER_API_KEY="tr_..."
-hybridrouter -local-url http://127.0.0.1:11434 \
+allrouter -local-url http://127.0.0.1:11434 \
   -tr-api-key "$TRUSTEDROUTER_API_KEY" \
   -alias gpt-4o=llama3.2 \
   -alias anthropic/claude-haiku-4.5=qwen2.5-coder:32b \
   -savings-reference gpt-4o
 ```
 
-The savings meter is an honest counterfactual: local tokens are priced only from TrustedRouter catalog prices, using the alias key first, then the requested TrustedRouter-known model, then `-savings-reference`. Without one of those price anchors, HybridRouter counts tokens only and reports no saved dollars.
+The savings meter is an honest counterfactual: local tokens are priced only from TrustedRouter catalog prices, using the alias key first, then the requested TrustedRouter-known model, then `-savings-reference`. Without one of those price anchors, AllRouter counts tokens only and reports no saved dollars.
 
 TrustedRouter-only:
 
 ```bash
 export TRUSTEDROUTER_API_KEY="tr_..."
-hybridrouter -no-autodetect -tr-api-key "$TRUSTEDROUTER_API_KEY"
+allrouter -no-autodetect -tr-api-key "$TRUSTEDROUTER_API_KEY"
 ```
 
 Claude Code with BackupRouter mode:
 
 ```bash
 export TRUSTEDROUTER_API_KEY="tr_..."
-hybridrouter -preset backuprouter -no-autodetect
+allrouter -preset backuprouter -no-autodetect
 ```
 
 In the shell where you run Claude Code:
 
 ```bash
 export ANTHROPIC_BASE_URL="http://127.0.0.1:8383"
-export ANTHROPIC_AUTH_TOKEN="${HYBRID_TOKEN:-hybridrouter-local}"
+export ANTHROPIC_AUTH_TOKEN="${ALLROUTER_TOKEN:-allrouter-local}"
 export ANTHROPIC_MODEL="anthropic/claude-sonnet-5"
 export ANTHROPIC_SMALL_FAST_MODEL="anthropic/claude-haiku-4.5"
 claude
@@ -82,7 +82,7 @@ claude
 
 BackupRouter keeps the requested Claude model first, then tries
 `moonshotai/kimi-k3` and `z-ai/glm-5.2`. Override that order with repeatable
-`-backup-model` flags or `HYBRID_BACKUP_MODELS`. An explicit request `models`
+`-backup-model` flags or `ALLROUTER_BACKUP_MODELS`. An explicit request `models`
 array always wins.
 
 Open `http://127.0.0.1:8383/ui` to configure the primary model,
@@ -93,23 +93,23 @@ privacy, open-weight status, managed routes, and provider coverage; non-chat
 and internal models are excluded.
 
 Saving applies the recovery chain immediately and writes it to
-`$XDG_CONFIG_HOME/hybridrouter/config.json` or
-`~/.config/hybridrouter/config.json`. The primary and small task choices are
+`$XDG_CONFIG_HOME/allrouter/config.json` or
+`~/.config/allrouter/config.json`. The primary and small task choices are
 client-side roles, so the panel produces setup for Claude Code, Codex CLI, or
 the ChatGPT Desktop Codex workspace. Claude Code receives both
 `ANTHROPIC_MODEL` and `ANTHROPIC_SMALL_FAST_MODEL`; Codex receives the primary
 model through a custom Responses API provider. CLI flags and
-`HYBRID_BACKUP_MODELS` take precedence over the saved UI route after a restart.
-Set `HYBRID_TOKEN` before launch to protect both the API and UI.
+`ALLROUTER_BACKUP_MODELS` take precedence over the saved UI route after a restart.
+Set `ALLROUTER_TOKEN` before launch to protect both the API and UI.
 
 If the proxy is reachable from the internet, require a bearer token:
 
 ```bash
-export HYBRID_TOKEN="$(openssl rand -hex 24)"
-hybridrouter -local-url http://127.0.0.1:11434 -tr-api-key "$TRUSTEDROUTER_API_KEY" -token "$HYBRID_TOKEN"
+export ALLROUTER_TOKEN="$(openssl rand -hex 24)"
+allrouter -local-url http://127.0.0.1:11434 -tr-api-key "$TRUSTEDROUTER_API_KEY" -token "$ALLROUTER_TOKEN"
 ```
 
-Clients may authenticate with either `Authorization: Bearer $HYBRID_TOKEN` or `x-api-key: $HYBRID_TOKEN`.
+Clients may authenticate with either `Authorization: Bearer $ALLROUTER_TOKEN` or `x-api-key: $ALLROUTER_TOKEN`.
 
 ## 2a. Docker Compose With Ollama
 
@@ -124,12 +124,12 @@ services:
     volumes:
       - ollama:/root/.ollama
 
-  hybridrouter:
+  allrouter:
     build: .
     depends_on:
       - ollama
     environment:
-      HYBRID_LOCAL_URL: http://ollama:11434
+      ALLROUTER_LOCAL_URL: http://ollama:11434
       TRUSTEDROUTER_API_KEY: ${TRUSTEDROUTER_API_KEY:-}
     ports:
       - "8383:8383"
@@ -146,45 +146,45 @@ Run the operator smoke against your local Ollama install:
 scripts/smoke.sh
 ```
 
-By default it uses `HYBRID_LOCAL_URL=http://127.0.0.1:11434` and starts HybridRouter on `127.0.0.1:8383`. Set `HYBRID_MODEL` if you want to force a specific local model.
+By default it uses `ALLROUTER_LOCAL_URL=http://127.0.0.1:11434` and starts AllRouter on `127.0.0.1:8383`. Set `ALLROUTER_MODEL` if you want to force a specific local model.
 
-Without `HYBRID_TOKEN`:
-
-```bash
-export HYBRID_HOST="http://127.0.0.1:8383"
-curl -fsS "$HYBRID_HOST/healthz"
-curl -fsS "$HYBRID_HOST/ui" >/dev/null
-curl -fsS "$HYBRID_HOST/v1/models"
-curl -is "$HYBRID_HOST/v1/chat/completions" \
-  -H "Content-Type: application/json" \
-  -d '{"model":"local/llama3.2","messages":[{"role":"user","content":"ping"}]}' \
-  | awk 'BEGIN{found=0} /^X-Hybrid-Route:/ {print; found=1} END{exit found?0:1}'
-```
-
-With `HYBRID_TOKEN`:
+Without `ALLROUTER_TOKEN`:
 
 ```bash
-export HYBRID_HOST="http://127.0.0.1:8383"
-curl -fsS "$HYBRID_HOST/healthz"
-curl -fsS -H "Authorization: Bearer $HYBRID_TOKEN" "$HYBRID_HOST/ui" >/dev/null
-curl -fsS -H "Authorization: Bearer $HYBRID_TOKEN" "$HYBRID_HOST/v1/models"
-curl -is "$HYBRID_HOST/v1/chat/completions" \
-  -H "Authorization: Bearer $HYBRID_TOKEN" \
+export ALLROUTER_HOST="http://127.0.0.1:8383"
+curl -fsS "$ALLROUTER_HOST/healthz"
+curl -fsS "$ALLROUTER_HOST/ui" >/dev/null
+curl -fsS "$ALLROUTER_HOST/v1/models"
+curl -is "$ALLROUTER_HOST/v1/chat/completions" \
   -H "Content-Type: application/json" \
   -d '{"model":"local/llama3.2","messages":[{"role":"user","content":"ping"}]}' \
-  | awk 'BEGIN{found=0} /^X-Hybrid-Route:/ {print; found=1} END{exit found?0:1}'
+  | awk 'BEGIN{found=0} /^X-AllRouter-Route:/ {print; found=1} END{exit found?0:1}'
 ```
 
-Open `$HYBRID_HOST/ui` as the "it's working" screen. It is read-only and shows the savings odometer, local/cloud split, local capacity, cloud spend, and recent routing decisions.
+With `ALLROUTER_TOKEN`:
+
+```bash
+export ALLROUTER_HOST="http://127.0.0.1:8383"
+curl -fsS "$ALLROUTER_HOST/healthz"
+curl -fsS -H "Authorization: Bearer $ALLROUTER_TOKEN" "$ALLROUTER_HOST/ui" >/dev/null
+curl -fsS -H "Authorization: Bearer $ALLROUTER_TOKEN" "$ALLROUTER_HOST/v1/models"
+curl -is "$ALLROUTER_HOST/v1/chat/completions" \
+  -H "Authorization: Bearer $ALLROUTER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"local/llama3.2","messages":[{"role":"user","content":"ping"}]}' \
+  | awk 'BEGIN{found=0} /^X-AllRouter-Route:/ {print; found=1} END{exit found?0:1}'
+```
+
+Open `$ALLROUTER_HOST/ui` as the "it's working" screen. It is read-only and shows the savings odometer, local/cloud split, local capacity, cloud spend, and recent routing decisions.
 
 With `x-api-key`:
 
 ```bash
-curl -is "$HYBRID_HOST/v1/chat/completions" \
-  -H "x-api-key: $HYBRID_TOKEN" \
+curl -is "$ALLROUTER_HOST/v1/chat/completions" \
+  -H "x-api-key: $ALLROUTER_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"model":"gpt-4o","messages":[{"role":"user","content":"ping"}]}' \
-  | awk 'BEGIN{found=0} /^X-Hybrid-Route:/ {print; found=1} END{exit found?0:1}'
+  | awk 'BEGIN{found=0} /^X-AllRouter-Route:/ {print; found=1} END{exit found?0:1}'
 ```
 
 ## 3a. Burst To Another OpenAI-Compatible Cloud
@@ -193,39 +193,39 @@ TrustedRouter is the default burst target, but `-tr-base-url` may point at any b
 
 ```bash
 export TRUSTEDROUTER_API_KEY="<upstream bearer token>"
-hybridrouter -local-url http://127.0.0.1:11434 \
+allrouter -local-url http://127.0.0.1:11434 \
   -tr-api-key "$TRUSTEDROUTER_API_KEY" \
   -tr-base-url "https://openrouter.ai/api/v1"
 ```
 
-Savings/pricing features use the TrustedRouter catalog. If the configured burst upstream lacks `/v1/messages` or `/v1/responses`, HybridRouter returns a clean `501 endpoint_not_supported` envelope for cloud passthrough requests. Aliased local `/v1/messages` requests do not require the burst upstream to support Anthropic Messages.
+Savings/pricing features use the TrustedRouter catalog. If the configured burst upstream lacks `/v1/messages` or `/v1/responses`, AllRouter returns a clean `501 endpoint_not_supported` envelope for cloud passthrough requests. Aliased local `/v1/messages` requests do not require the burst upstream to support Anthropic Messages.
 
 ## 3b. Savings And Cloud Controls
 
-Savings state is written to `$XDG_STATE_HOME/hybridrouter/state.json` or `~/.hybridrouter/state.json`; set `-state-file ""` to disable persistence.
+Savings state is written to `$XDG_STATE_HOME/allrouter/state.json` or `~/.allrouter/state.json`; set `-state-file ""` to disable persistence.
 
 BackupRouter UI configuration is written separately to
-`$XDG_CONFIG_HOME/hybridrouter/config.json` or
-`~/.config/hybridrouter/config.json`; set `-config-file ""` to disable UI
+`$XDG_CONFIG_HOME/allrouter/config.json` or
+`~/.config/allrouter/config.json`; set `-config-file ""` to disable UI
 persistence.
 
 Cloud egress modes:
 
 ```bash
 # Normal local-first bursting.
-hybridrouter -local-url http://127.0.0.1:11434 -tr-api-key "$TRUSTEDROUTER_API_KEY" -cloud auto
+allrouter -local-url http://127.0.0.1:11434 -tr-api-key "$TRUSTEDROUTER_API_KEY" -cloud auto
 
 # No automatic bursts; only explicit non-local provider requests can use cloud.
-hybridrouter -local-url http://127.0.0.1:11434 -tr-api-key "$TRUSTEDROUTER_API_KEY" -cloud explicit
+allrouter -local-url http://127.0.0.1:11434 -tr-api-key "$TRUSTEDROUTER_API_KEY" -cloud explicit
 
 # Disable cloud entirely.
-hybridrouter -local-url http://127.0.0.1:11434 -tr-api-key "$TRUSTEDROUTER_API_KEY" -cloud off
+allrouter -local-url http://127.0.0.1:11434 -tr-api-key "$TRUSTEDROUTER_API_KEY" -cloud off
 ```
 
 Set a per-UTC-day cap:
 
 ```bash
-hybridrouter -local-url http://127.0.0.1:11434 \
+allrouter -local-url http://127.0.0.1:11434 \
   -tr-api-key "$TRUSTEDROUTER_API_KEY" \
   -max-cloud-spend 1.00
 ```
@@ -247,18 +247,18 @@ For a stable domain:
 ngrok http --domain=<your-domain>.ngrok.app 8383
 ```
 
-When internet-exposed, set `HYBRID_TOKEN`. Do not expose HybridRouter without it.
+When internet-exposed, set `ALLROUTER_TOKEN`. Do not expose AllRouter without it.
 
 ```bash
-export HYBRID_HOST="https://<your-domain>.ngrok.app"
-curl -fsS -H "Authorization: Bearer $HYBRID_TOKEN" "$HYBRID_HOST/v1/models"
+export ALLROUTER_HOST="https://<your-domain>.ngrok.app"
+curl -fsS -H "Authorization: Bearer $ALLROUTER_TOKEN" "$ALLROUTER_HOST/v1/models"
 ```
 
 ## 5. Wire A Harness
 
 Use the public host for remote harnesses, for example `https://<your-domain>.ngrok.app`. Use `http://127.0.0.1:8383` for local harnesses.
 
-When using a TrustedRouter SDK for Python, JavaScript, Swift, or Go against HybridRouter, set both the inference base and the control base/catalog base to the HybridRouter URL. If only inference is pointed at HybridRouter, SDK catalog/account calls still go directly to the TrustedRouter control plane and bypass the proxy.
+When using a TrustedRouter SDK for Python, JavaScript, Swift, or Go against AllRouter, set both the inference base and the control base/catalog base to the AllRouter URL. If only inference is pointed at AllRouter, SDK catalog/account calls still go directly to the TrustedRouter control plane and bypass the proxy.
 
 ### Cursor
 
@@ -266,7 +266,7 @@ Settings -> Models -> OpenAI API override:
 
 ```text
 Base URL: https://<host>/v1
-API key: $HYBRID_TOKEN, or any string when HYBRID_TOKEN is unset
+API key: $ALLROUTER_TOKEN, or any string when ALLROUTER_TOKEN is unset
 Models: local/llama3.2, anthropic/claude-haiku-4.5
 ```
 
@@ -280,52 +280,52 @@ Verify with a chat request:
 
 ```bash
 curl -is "https://<host>/v1/chat/completions" \
-  -H "Authorization: Bearer $HYBRID_TOKEN" \
+  -H "Authorization: Bearer $ALLROUTER_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"model":"local/llama3.2","messages":[{"role":"user","content":"ping"}]}' \
-  | awk 'BEGIN{found=0} /^X-Hybrid-Route:/ {print; found=1} END{exit found?0:1}'
+  | awk 'BEGIN{found=0} /^X-AllRouter-Route:/ {print; found=1} END{exit found?0:1}'
 ```
 
 ### Claude Code / Anthropic SDKs
 
 For cloud-first Claude Code with automatic model fallback, use
-[BackupRouter mode](#2-run). HybridRouter can also run Claude Code against a
+[BackupRouter mode](#2-run). AllRouter can also run Claude Code against a
 local OpenAI-compatible model by translating Anthropic `/v1/messages` to local
 `/v1/chat/completions`. Add an alias from the Claude model id your client sends
 to the local model name:
 
 ```bash
 export TRUSTEDROUTER_API_KEY="tr_..."
-hybridrouter -local-url http://127.0.0.1:11434 \
+allrouter -local-url http://127.0.0.1:11434 \
   -tr-api-key "$TRUSTEDROUTER_API_KEY" \
   -alias anthropic/claude-haiku-4.5=qwen2.5-coder:32b
 ```
 
-If Claude Code sends a different id, use that exact id on the left side of `-alias`. When local is full or failing and cloud egress is allowed, HybridRouter bursts the original Anthropic body to TrustedRouter.
+If Claude Code sends a different id, use that exact id on the left side of `-alias`. When local is full or failing and cloud egress is allowed, AllRouter bursts the original Anthropic body to TrustedRouter.
 
 ```bash
 export ANTHROPIC_BASE_URL="https://<host>"
-export ANTHROPIC_AUTH_TOKEN="${HYBRID_TOKEN:-hybridrouter-local}"
+export ANTHROPIC_AUTH_TOKEN="${ALLROUTER_TOKEN:-allrouter-local}"
 export ANTHROPIC_MODEL="anthropic/claude-haiku-4.5"
 ```
 
-Anthropic-family clients send `x-api-key`; HybridRouter accepts it when `HYBRID_TOKEN` is set.
+Anthropic-family clients send `x-api-key`; AllRouter accepts it when `ALLROUTER_TOKEN` is set.
 
 Verify:
 
 ```bash
 curl -is "https://<host>/v1/messages" \
-  -H "x-api-key: $HYBRID_TOKEN" \
+  -H "x-api-key: $ALLROUTER_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"model":"anthropic/claude-haiku-4.5","max_tokens":16,"messages":[{"role":"user","content":"ping"}]}' \
-  | awk 'BEGIN{found=0} /^X-Hybrid-Route:/ {print; found=1} END{exit found?0:1}'
+  | awk 'BEGIN{found=0} /^X-AllRouter-Route:/ {print; found=1} END{exit found?0:1}'
 ```
 
 ### Aider, OpenAI SDKs, OpenHands
 
 ```bash
 export OPENAI_BASE_URL="https://<host>/v1"
-export OPENAI_API_KEY="${HYBRID_TOKEN:-any-string}"
+export OPENAI_API_KEY="${ALLROUTER_TOKEN:-any-string}"
 ```
 
 If your tool uses the older variable:
@@ -338,10 +338,10 @@ Verify:
 
 ```bash
 curl -is "https://<host>/v1/chat/completions" \
-  -H "Authorization: Bearer $HYBRID_TOKEN" \
+  -H "Authorization: Bearer $ALLROUTER_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"model":"local/llama3.2","messages":[{"role":"user","content":"ping"}]}' \
-  | awk 'BEGIN{found=0} /^X-Hybrid-Route:/ {print; found=1} END{exit found?0:1}'
+  | awk 'BEGIN{found=0} /^X-AllRouter-Route:/ {print; found=1} END{exit found?0:1}'
 ```
 
 ### Codex CLI and ChatGPT Desktop
@@ -351,39 +351,39 @@ user-level Codex configuration instead of only `OPENAI_BASE_URL`:
 
 ```toml
 model = "trustedrouter/auto"
-model_provider = "hybridrouter"
+model_provider = "allrouter"
 
-[model_providers.hybridrouter]
-name = "HybridRouter"
+[model_providers.allrouter]
+name = "AllRouter"
 base_url = "http://127.0.0.1:8383/v1"
-env_key = "HYBRID_TOKEN"
+env_key = "ALLROUTER_TOKEN"
 wire_api = "responses"
 ```
 
 Save that block in `~/.codex/config.toml`, then launch:
 
 ```bash
-export HYBRID_TOKEN="${HYBRID_TOKEN:-hybridrouter-local}"
+export ALLROUTER_TOKEN="${ALLROUTER_TOKEN:-allrouter-local}"
 codex
 ```
 
 The ChatGPT Desktop Codex workspace uses the same configuration layers. In the
 app, open **Settings > Configuration > Open config.toml**, add the provider,
-make `HYBRID_TOKEN` available to the app, and restart it:
+make `ALLROUTER_TOKEN` available to the app, and restart it:
 
 ```bash
-launchctl setenv HYBRID_TOKEN "${HYBRID_TOKEN:-hybridrouter-local}"
+launchctl setenv ALLROUTER_TOKEN "${ALLROUTER_TOKEN:-allrouter-local}"
 ```
 
 Ordinary ChatGPT
 conversations cannot replace OpenAI's underlying model provider with
-HybridRouter; this setup applies specifically to the Codex workspace.
+AllRouter; this setup applies specifically to the Codex workspace.
 
 ### Generic OpenAI-Compatible Integration
 
 ```text
 Base URL: https://<host>/v1
-API key: $HYBRID_TOKEN, or any string when HYBRID_TOKEN is unset
+API key: $ALLROUTER_TOKEN, or any string when ALLROUTER_TOKEN is unset
 Model: local/<local-model>, an alias id such as gpt-4o, or a TrustedRouter model
 ```
 
@@ -410,7 +410,7 @@ Force TrustedRouter:
 Alias cloud id to local model:
 
 ```bash
-hybridrouter -local-url http://127.0.0.1:11434 \
+allrouter -local-url http://127.0.0.1:11434 \
   -alias gpt-4o=llama3.2 \
   -savings-reference gpt-4o
 ```
@@ -418,7 +418,7 @@ hybridrouter -local-url http://127.0.0.1:11434 \
 Allow unmapped local-native ids to burst with a fallback model:
 
 ```bash
-hybridrouter -local-url http://127.0.0.1:11434 \
+allrouter -local-url http://127.0.0.1:11434 \
   -tr-api-key "$TRUSTEDROUTER_API_KEY" \
   -burst-fallback-model openai/gpt-4o-mini
 ```
@@ -426,14 +426,14 @@ hybridrouter -local-url http://127.0.0.1:11434 \
 Read routing:
 
 ```bash
-curl -fsS -H "Authorization: Bearer $HYBRID_TOKEN" "$HYBRID_HOST/stats"
+curl -fsS -H "Authorization: Bearer $ALLROUTER_TOKEN" "$ALLROUTER_HOST/stats"
 ```
 
 Response headers:
 
 ```http
-X-Hybrid-Route: local
-X-Hybrid-Reason: policy
+X-AllRouter-Route: local
+X-AllRouter-Reason: policy
 ```
 
 Reasons: `policy`, `forced`, `burst-full`, `burst-error`, `burst-slow`.

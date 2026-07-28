@@ -28,8 +28,8 @@ const (
 )
 
 var (
-	hybridBinary string
-	repoRoot     string
+	allRouterBinary string
+	repoRoot        string
 )
 
 func TestMain(m *testing.M) {
@@ -40,18 +40,18 @@ func TestMain(m *testing.M) {
 	}
 	repoRoot = root
 
-	tmp, err := os.MkdirTemp("", "hybridrouter-e2e-*")
+	tmp, err := os.MkdirTemp("", "allrouter-e2e-*")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "create temp dir: %v\n", err)
 		os.Exit(2)
 	}
 	defer os.RemoveAll(tmp)
 
-	binary := filepath.Join(tmp, "hybridrouter")
+	binary := filepath.Join(tmp, "allrouter")
 	if runtime.GOOS == "windows" {
 		binary += ".exe"
 	}
-	cmd := exec.Command("go", "build", "-o", binary, "./cmd/hybridrouter")
+	cmd := exec.Command("go", "build", "-o", binary, "./cmd/allrouter")
 	cmd.Dir = root
 	cmd.Env = append(os.Environ(),
 		"GOCACHE="+filepath.Join(tmp, "gocache"),
@@ -59,10 +59,10 @@ func TestMain(m *testing.M) {
 	)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "go build ./cmd/hybridrouter: %v\n%s\n", err, out)
+		fmt.Fprintf(os.Stderr, "go build ./cmd/allrouter: %v\n%s\n", err, out)
 		os.Exit(2)
 	}
-	hybridBinary = binary
+	allRouterBinary = binary
 
 	os.Exit(m.Run())
 }
@@ -90,7 +90,7 @@ func TestBinaryHealthStatsAndRoutingMatrix(t *testing.T) {
 	}))
 	defer tr.Close()
 
-	proc := startHybrid(t, hybridConfig{
+	proc := startAllRouter(t, allRouterConfig{
 		localURL:     local.URL,
 		trAPIKey:     "e2e-tr-key",
 		trBaseURL:    tr.URL + "/v1",
@@ -130,7 +130,7 @@ func TestBinaryHealthStatsAndRoutingMatrix(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("metrics status = %d body=%s", resp.StatusCode, body)
 	}
-	if !bytes.Contains(body, []byte("hybrid_requests_total")) {
+	if !bytes.Contains(body, []byte("allrouter_requests_total")) {
 		t.Fatalf("metrics missing requests counter: %s", body)
 	}
 
@@ -140,7 +140,7 @@ func TestBinaryHealthStatsAndRoutingMatrix(t *testing.T) {
 		t.Fatalf("default status = %d body=%s", resp.StatusCode, body)
 	}
 	assertRoute(t, resp, "local", "policy")
-	assertHybridBlock(t, body, "local", "policy")
+	assertAllRouterBlock(t, body, "local", "policy")
 	if got := localLog.last(t).Body; !bytes.Equal(got, []byte(defaultBody)) {
 		t.Fatalf("default local body = %s, want byte-identical %s", got, defaultBody)
 	}
@@ -150,7 +150,7 @@ func TestBinaryHealthStatsAndRoutingMatrix(t *testing.T) {
 		t.Fatalf("local prefix status = %d body=%s", resp.StatusCode, body)
 	}
 	assertRoute(t, resp, "local", "forced")
-	assertHybridBlock(t, body, "local", "forced")
+	assertAllRouterBlock(t, body, "local", "forced")
 	assertTopLevelString(t, localLog.last(t).Body, "model", "llama3")
 
 	resp, body = postChat(t, proc, `{"model":"llama3","provider":{"only":["local"]},"messages":[]}`, nil)
@@ -158,7 +158,7 @@ func TestBinaryHealthStatsAndRoutingMatrix(t *testing.T) {
 		t.Fatalf("provider.only local status = %d body=%s", resp.StatusCode, body)
 	}
 	assertRoute(t, resp, "local", "forced")
-	assertHybridBlock(t, body, "local", "forced")
+	assertAllRouterBlock(t, body, "local", "forced")
 	assertNoTopLevelKey(t, localLog.last(t).Body, "provider")
 
 	trBody := `{"model":"trustedrouter/auto","provider":{"order":["anthropic"]},"messages":[{"role":"user","content":"<b>&"}]}`
@@ -167,7 +167,7 @@ func TestBinaryHealthStatsAndRoutingMatrix(t *testing.T) {
 		t.Fatalf("provider.order external status = %d body=%s", resp.StatusCode, body)
 	}
 	assertRoute(t, resp, "trustedrouter", "forced")
-	assertHybridBlock(t, body, "trustedrouter", "forced")
+	assertAllRouterBlock(t, body, "trustedrouter", "forced")
 	if got := trLog.last(t).Body; !bytes.Equal(got, []byte(trBody)) {
 		t.Fatalf("trustedrouter body = %s, want byte-identical %s", got, trBody)
 	}
@@ -199,7 +199,7 @@ func TestBinaryBurstOnFull(t *testing.T) {
 	}))
 	defer tr.Close()
 
-	proc := startHybrid(t, hybridConfig{
+	proc := startAllRouter(t, allRouterConfig{
 		localURL:            local.URL,
 		trAPIKey:            "e2e-tr-key",
 		trBaseURL:           tr.URL + "/v1",
@@ -231,7 +231,7 @@ func TestBinaryBurstOnFull(t *testing.T) {
 		t.Fatalf("burst status = %d body=%s", resp.StatusCode, body)
 	}
 	assertRoute(t, resp, "trustedrouter", "burst-full")
-	assertHybridBlock(t, body, "trustedrouter", "burst-full")
+	assertAllRouterBlock(t, body, "trustedrouter", "burst-full")
 	if trLog.countPath("/v1/chat/completions") != 1 {
 		t.Fatalf("trustedrouter chat calls = %d, want 1", trLog.countPath("/v1/chat/completions"))
 	}
@@ -263,7 +263,7 @@ func TestBinaryAliasRoutingModelsAndBurst(t *testing.T) {
 		}))
 		defer local.Close()
 
-		proc := startHybrid(t, hybridConfig{
+		proc := startAllRouter(t, allRouterConfig{
 			localURL: local.URL,
 			aliases:  []string{"gpt-4o=llama3"},
 		})
@@ -311,7 +311,7 @@ func TestBinaryAliasRoutingModelsAndBurst(t *testing.T) {
 		}))
 		defer tr.Close()
 
-		proc := startHybrid(t, hybridConfig{
+		proc := startAllRouter(t, allRouterConfig{
 			localURL:            local.URL,
 			trAPIKey:            "e2e-tr-key",
 			trBaseURL:           tr.URL + "/v1",
@@ -373,7 +373,7 @@ func TestBinaryMessagesLocalTranslation(t *testing.T) {
 	}))
 	defer local.Close()
 
-	proc := startHybrid(t, hybridConfig{
+	proc := startAllRouter(t, allRouterConfig{
 		localURL: local.URL,
 		aliases:  []string{"anthropic/claude-haiku-4.5=llama3"},
 	})
@@ -403,7 +403,7 @@ func TestBinaryMessagesStreamingTranslation(t *testing.T) {
 	}))
 	defer local.Close()
 
-	proc := startHybrid(t, hybridConfig{
+	proc := startAllRouter(t, allRouterConfig{
 		localURL: local.URL,
 		aliases:  []string{"anthropic/claude-haiku-4.5=llama3"},
 	})
@@ -476,7 +476,7 @@ func TestBinaryMessagesToolRoundTrip(t *testing.T) {
 	}))
 	defer local.Close()
 
-	proc := startHybrid(t, hybridConfig{
+	proc := startAllRouter(t, allRouterConfig{
 		localURL: local.URL,
 		aliases:  []string{"anthropic/claude-haiku-4.5=llama3"},
 	})
@@ -533,7 +533,7 @@ func TestBinaryMessagesBurstOnFullRawBody(t *testing.T) {
 	}))
 	defer tr.Close()
 
-	proc := startHybrid(t, hybridConfig{
+	proc := startAllRouter(t, allRouterConfig{
 		localURL:            local.URL,
 		trAPIKey:            "e2e-tr-key",
 		trBaseURL:           tr.URL + "/v1",
@@ -599,7 +599,7 @@ func TestBinaryBackupRouterClaudeCodeRequestAddsOrderedFallbacks(t *testing.T) {
 	}))
 	defer tr.Close()
 
-	proc := startHybrid(t, hybridConfig{
+	proc := startAllRouter(t, allRouterConfig{
 		trAPIKey:     "e2e-tr-key",
 		trBaseURL:    tr.URL + "/v1",
 		trCatalogURL: tr.URL + "/v1",
@@ -653,7 +653,7 @@ func TestBinaryUnmappedLocalModelSuppressionAndFallback(t *testing.T) {
 		}))
 		defer tr.Close()
 
-		proc := startHybrid(t, hybridConfig{
+		proc := startAllRouter(t, allRouterConfig{
 			localURL:            local.URL,
 			trAPIKey:            "e2e-tr-key",
 			trBaseURL:           tr.URL + "/v1",
@@ -719,7 +719,7 @@ func TestBinaryUnmappedLocalModelSuppressionAndFallback(t *testing.T) {
 		}))
 		defer tr.Close()
 
-		proc := startHybrid(t, hybridConfig{
+		proc := startAllRouter(t, allRouterConfig{
 			localURL:            local.URL,
 			trAPIKey:            "e2e-tr-key",
 			trBaseURL:           tr.URL + "/v1",
@@ -775,7 +775,7 @@ func TestBinaryBurstOnError(t *testing.T) {
 		}))
 		defer tr.Close()
 
-		proc := startHybrid(t, hybridConfig{
+		proc := startAllRouter(t, allRouterConfig{
 			localURL:     local.URL,
 			trAPIKey:     "e2e-tr-key",
 			trBaseURL:    tr.URL + "/v1",
@@ -787,7 +787,7 @@ func TestBinaryBurstOnError(t *testing.T) {
 			t.Fatalf("status = %d body=%s", resp.StatusCode, body)
 		}
 		assertRoute(t, resp, "trustedrouter", "burst-error")
-		assertHybridBlock(t, body, "trustedrouter", "burst-error")
+		assertAllRouterBlock(t, body, "trustedrouter", "burst-error")
 		if trLog.countPath("/v1/chat/completions") != 1 {
 			t.Fatalf("trustedrouter chat calls = %d, want 1", trLog.countPath("/v1/chat/completions"))
 		}
@@ -802,7 +802,7 @@ func TestBinaryBurstOnError(t *testing.T) {
 		}))
 		defer tr.Close()
 
-		proc := startHybrid(t, hybridConfig{
+		proc := startAllRouter(t, allRouterConfig{
 			localURL:     deadLocalURL,
 			trAPIKey:     "e2e-tr-key",
 			trBaseURL:    tr.URL + "/v1",
@@ -814,7 +814,7 @@ func TestBinaryBurstOnError(t *testing.T) {
 			t.Fatalf("status = %d body=%s", resp.StatusCode, body)
 		}
 		assertRoute(t, resp, "trustedrouter", "burst-error")
-		assertHybridBlock(t, body, "trustedrouter", "burst-error")
+		assertAllRouterBlock(t, body, "trustedrouter", "burst-error")
 		if trLog.countPath("/v1/chat/completions") != 1 {
 			t.Fatalf("trustedrouter chat calls = %d, want 1", trLog.countPath("/v1/chat/completions"))
 		}
@@ -851,7 +851,7 @@ func TestBinarySlowLocalFirstByte(t *testing.T) {
 		}))
 		defer tr.Close()
 
-		proc := startHybrid(t, hybridConfig{
+		proc := startAllRouter(t, allRouterConfig{
 			localURL:       local.URL,
 			trAPIKey:       "e2e-tr-key",
 			trBaseURL:      tr.URL + "/v1",
@@ -905,7 +905,7 @@ func TestBinarySlowLocalFirstByte(t *testing.T) {
 		}))
 		defer tr.Close()
 
-		proc := startHybrid(t, hybridConfig{
+		proc := startAllRouter(t, allRouterConfig{
 			localURL:       local.URL,
 			trAPIKey:       "e2e-tr-key",
 			trBaseURL:      tr.URL + "/v1",
@@ -956,7 +956,7 @@ func TestBinarySlowLocalFirstByte(t *testing.T) {
 		}))
 		defer tr.Close()
 
-		proc := startHybrid(t, hybridConfig{
+		proc := startAllRouter(t, allRouterConfig{
 			localURL:       local.URL,
 			trAPIKey:       "e2e-tr-key",
 			trBaseURL:      tr.URL + "/v1",
@@ -994,7 +994,7 @@ func TestBinarySlowLocalFirstByte(t *testing.T) {
 		}))
 		defer tr.Close()
 
-		proc := startHybrid(t, hybridConfig{
+		proc := startAllRouter(t, allRouterConfig{
 			localURL:       local.URL,
 			trAPIKey:       "e2e-tr-key",
 			trBaseURL:      tr.URL + "/v1",
@@ -1007,7 +1007,7 @@ func TestBinarySlowLocalFirstByte(t *testing.T) {
 			t.Fatalf("status = %d body=%s", resp.StatusCode, body)
 		}
 		assertRoute(t, resp, "local", "forced")
-		assertHybridBlock(t, body, "local", "forced")
+		assertAllRouterBlock(t, body, "local", "forced")
 		if trLog.countPath("/v1/chat/completions") != 0 {
 			t.Fatalf("trustedrouter chat calls = %d, want 0", trLog.countPath("/v1/chat/completions"))
 		}
@@ -1027,7 +1027,7 @@ func TestBinaryForcedLocalFailureDoesNotBurst(t *testing.T) {
 	}))
 	defer tr.Close()
 
-	proc := startHybrid(t, hybridConfig{
+	proc := startAllRouter(t, allRouterConfig{
 		localURL:     local.URL,
 		trAPIKey:     "e2e-tr-key",
 		trBaseURL:    tr.URL + "/v1",
@@ -1078,7 +1078,7 @@ func TestBinaryStreamingFlushesIncrementally(t *testing.T) {
 	}))
 	defer local.Close()
 
-	proc := startHybrid(t, hybridConfig{localURL: local.URL})
+	proc := startAllRouter(t, allRouterConfig{localURL: local.URL})
 	respCh := make(chan *http.Response, 1)
 	errCh := make(chan error, 1)
 	go func() {
@@ -1158,7 +1158,7 @@ func TestBinaryStreamingSavingsAndLocalBodySplice(t *testing.T) {
 	}))
 	defer catalog.Close()
 
-	proc := startHybrid(t, hybridConfig{
+	proc := startAllRouter(t, allRouterConfig{
 		localURL:     local.URL,
 		trAPIKey:     "e2e-tr-key",
 		trBaseURL:    tr.URL + "/v1",
@@ -1170,8 +1170,8 @@ func TestBinaryStreamingSavingsAndLocalBodySplice(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d body=%s", resp.StatusCode, body)
 	}
-	if got := resp.Header.Get("X-Hybrid-Saved-USD"); got == "" {
-		t.Fatal("missing X-Hybrid-Saved-USD")
+	if got := resp.Header.Get("X-AllRouter-Saved-USD"); got == "" {
+		t.Fatal("missing X-AllRouter-Saved-USD")
 	}
 	assertTopLevelBool(t, localLog.last(t).Body, "stream_options", "include_usage", true)
 
@@ -1209,7 +1209,7 @@ func TestBinaryStreamOptionsNotSplicedIntoBurstBody(t *testing.T) {
 	}))
 	defer tr.Close()
 
-	proc := startHybrid(t, hybridConfig{
+	proc := startAllRouter(t, allRouterConfig{
 		localURL:            local.URL,
 		trAPIKey:            "e2e-tr-key",
 		trBaseURL:           tr.URL + "/v1",
@@ -1263,7 +1263,7 @@ func TestBinaryCloudControlsAndBudget(t *testing.T) {
 		}))
 		defer tr.Close()
 
-		proc := startHybrid(t, hybridConfig{
+		proc := startAllRouter(t, allRouterConfig{
 			localURL:            local.URL,
 			trAPIKey:            "e2e-tr-key",
 			trBaseURL:           tr.URL + "/v1",
@@ -1314,7 +1314,7 @@ func TestBinaryCloudControlsAndBudget(t *testing.T) {
 			writeJSON(w, http.StatusOK, map[string]any{"id": "tr"})
 		}))
 		defer tr.Close()
-		proc := startHybrid(t, hybridConfig{
+		proc := startAllRouter(t, allRouterConfig{
 			localURL:     local.URL,
 			trAPIKey:     "e2e-tr-key",
 			trBaseURL:    tr.URL + "/v1",
@@ -1354,7 +1354,7 @@ func TestBinaryCloudControlsAndBudget(t *testing.T) {
 			})
 		}))
 		defer catalog.Close()
-		proc := startHybrid(t, hybridConfig{
+		proc := startAllRouter(t, allRouterConfig{
 			trAPIKey:      "e2e-tr-key",
 			trBaseURL:     tr.URL + "/v1",
 			trCatalogURL:  catalog.URL + "/v1",
@@ -1378,7 +1378,7 @@ func TestBinaryCloudControlsAndBudget(t *testing.T) {
 }
 
 func TestBinaryStatePersistsAcrossRestart(t *testing.T) {
-	stateFile := filepath.Join(t.TempDir(), "hybrid", "state.json")
+	stateFile := filepath.Join(t.TempDir(), "allrouter", "state.json")
 	local := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{
 			"id":    "local",
@@ -1403,7 +1403,7 @@ func TestBinaryStatePersistsAcrossRestart(t *testing.T) {
 		})
 	}))
 	defer catalog.Close()
-	cfg := hybridConfig{
+	cfg := allRouterConfig{
 		localURL:     local.URL,
 		trAPIKey:     "e2e-tr-key",
 		trBaseURL:    tr.URL + "/v1",
@@ -1412,14 +1412,14 @@ func TestBinaryStatePersistsAcrossRestart(t *testing.T) {
 		stateFile:    stateFile,
 	}
 
-	proc := startHybrid(t, cfg)
+	proc := startAllRouter(t, cfg)
 	resp, body := postChat(t, proc, `{"model":"openai/gpt-4o","messages":[]}`, nil)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d body=%s", resp.StatusCode, body)
 	}
 	proc.stop(t)
 
-	proc = startHybrid(t, cfg)
+	proc = startAllRouter(t, cfg)
 	_, statsBody := get(t, proc, "/stats", nil)
 	if got := savedUSD(t, statsBody); got != 0.00002 {
 		t.Fatalf("saved_usd after restart = %.8f, want 0.00002; stats=%s", got, statsBody)
@@ -1441,7 +1441,7 @@ func TestBinarySanitizesInboundHeaders(t *testing.T) {
 	}))
 	defer tr.Close()
 
-	proc := startHybrid(t, hybridConfig{
+	proc := startAllRouter(t, allRouterConfig{
 		localURL:     local.URL,
 		trAPIKey:     "e2e-tr-key",
 		trBaseURL:    tr.URL + "/v1",
@@ -1473,7 +1473,7 @@ func TestBinaryTokenAuth(t *testing.T) {
 	}))
 	defer local.Close()
 
-	proc := startHybrid(t, hybridConfig{
+	proc := startAllRouter(t, allRouterConfig{
 		localURL: local.URL,
 		token:    "secret",
 	})
@@ -1515,7 +1515,7 @@ func TestBinaryXAPIKeyAuth(t *testing.T) {
 	}))
 	defer tr.Close()
 
-	proc := startHybrid(t, hybridConfig{
+	proc := startAllRouter(t, allRouterConfig{
 		localURL:     local.URL,
 		trAPIKey:     "e2e-tr-key",
 		trBaseURL:    tr.URL + "/v1",
@@ -1555,7 +1555,7 @@ func TestBinaryTrustedRouterOnlyUpstream404MapsTo501(t *testing.T) {
 	}))
 	defer tr.Close()
 
-	proc := startHybrid(t, hybridConfig{
+	proc := startAllRouter(t, allRouterConfig{
 		trAPIKey:     "e2e-tr-key",
 		trBaseURL:    tr.URL + "/v1",
 		trCatalogURL: tr.URL + "/v1",
@@ -1621,7 +1621,7 @@ func TestBinaryModelsMergeUsesCatalogAndLocalPrefixes(t *testing.T) {
 	}))
 	defer catalog.Close()
 
-	proc := startHybrid(t, hybridConfig{
+	proc := startAllRouter(t, allRouterConfig{
 		localURL:     local.URL,
 		trAPIKey:     "e2e-tr-key",
 		trBaseURL:    tr.URL + "/v1",
@@ -1641,7 +1641,7 @@ func TestBinaryModelsMergeUsesCatalogAndLocalPrefixes(t *testing.T) {
 	}
 }
 
-type hybridConfig struct {
+type allRouterConfig struct {
 	localURL            string
 	trAPIKey            string
 	trBaseURL           string
@@ -1661,7 +1661,7 @@ type hybridConfig struct {
 	maxCloudSpend       string
 }
 
-type hybridProcess struct {
+type allRouterProcess struct {
 	baseURL  string
 	client   *http.Client
 	cmd      *exec.Cmd
@@ -1670,7 +1670,7 @@ type hybridProcess struct {
 	stopOnce sync.Once
 }
 
-func startHybrid(t *testing.T, cfg hybridConfig) *hybridProcess {
+func startAllRouter(t *testing.T, cfg allRouterConfig) *allRouterProcess {
 	t.Helper()
 	addr := freeAddr(t)
 	maxConcurrency := cfg.localMaxConcurrency
@@ -1723,19 +1723,19 @@ func startHybrid(t *testing.T, cfg hybridConfig) *hybridProcess {
 	for _, model := range cfg.backupModels {
 		args = append(args, "-backup-model", model)
 	}
-	cmd := exec.Command(hybridBinary, args...)
+	cmd := exec.Command(allRouterBinary, args...)
 	cmd.Dir = repoRoot
 	stderr := &bytes.Buffer{}
 	cmd.Stderr = stderr
 	exited := make(chan error, 1)
 	if err := cmd.Start(); err != nil {
-		t.Fatalf("start hybridrouter: %v\nstderr:\n%s", err, stderr.String())
+		t.Fatalf("start allrouter: %v\nstderr:\n%s", err, stderr.String())
 	}
 	go func() {
 		exited <- cmd.Wait()
 	}()
 
-	proc := &hybridProcess{
+	proc := &allRouterProcess{
 		baseURL: "http://" + addr,
 		client:  &http.Client{},
 		cmd:     cmd,
@@ -1745,7 +1745,7 @@ func startHybrid(t *testing.T, cfg hybridConfig) *hybridProcess {
 	t.Cleanup(func() {
 		proc.stop(t)
 		if t.Failed() {
-			t.Logf("hybridrouter stderr:\n%s", proc.stderr.String())
+			t.Logf("allrouter stderr:\n%s", proc.stderr.String())
 		}
 	})
 
@@ -1768,11 +1768,11 @@ func startHybrid(t *testing.T, cfg hybridConfig) *hybridProcess {
 		}
 		time.Sleep(25 * time.Millisecond)
 	}
-	t.Fatalf("hybridrouter did not become ready\nstderr:\n%s", stderr.String())
+	t.Fatalf("allrouter did not become ready\nstderr:\n%s", stderr.String())
 	return nil
 }
 
-func (p *hybridProcess) stop(t *testing.T) {
+func (p *allRouterProcess) stop(t *testing.T) {
 	t.Helper()
 	p.stopOnce.Do(func() {
 		if p.cmd.Process != nil {
@@ -1837,32 +1837,32 @@ func findRepoRoot() (string, error) {
 	}
 }
 
-func get(t *testing.T, proc *hybridProcess, path string, headers http.Header) (*http.Response, []byte) {
+func get(t *testing.T, proc *allRouterProcess, path string, headers http.Header) (*http.Response, []byte) {
 	t.Helper()
 	return do(t, proc, http.MethodGet, path, "", headers)
 }
 
-func postChat(t *testing.T, proc *hybridProcess, body string, headers http.Header) (*http.Response, []byte) {
+func postChat(t *testing.T, proc *allRouterProcess, body string, headers http.Header) (*http.Response, []byte) {
 	t.Helper()
 	return do(t, proc, http.MethodPost, chatPath, body, headers)
 }
 
-func postMessages(t *testing.T, proc *hybridProcess, body string, headers http.Header) (*http.Response, []byte) {
+func postMessages(t *testing.T, proc *allRouterProcess, body string, headers http.Header) (*http.Response, []byte) {
 	t.Helper()
 	return do(t, proc, http.MethodPost, messagesPath, body, headers)
 }
 
-func postChatWithTimeout(t *testing.T, proc *hybridProcess, body string, headers http.Header, timeout time.Duration) (*http.Response, []byte) {
+func postChatWithTimeout(t *testing.T, proc *allRouterProcess, body string, headers http.Header, timeout time.Duration) (*http.Response, []byte) {
 	t.Helper()
 	return doWithTimeout(t, proc, http.MethodPost, chatPath, body, headers, timeout)
 }
 
-func do(t *testing.T, proc *hybridProcess, method, path, body string, headers http.Header) (*http.Response, []byte) {
+func do(t *testing.T, proc *allRouterProcess, method, path, body string, headers http.Header) (*http.Response, []byte) {
 	t.Helper()
 	return doWithTimeout(t, proc, method, path, body, headers, 5*time.Second)
 }
 
-func doWithTimeout(t *testing.T, proc *hybridProcess, method, path, body string, headers http.Header, timeout time.Duration) (*http.Response, []byte) {
+func doWithTimeout(t *testing.T, proc *allRouterProcess, method, path, body string, headers http.Header, timeout time.Duration) (*http.Response, []byte) {
 	t.Helper()
 	resp, data, err := doResult(proc, method, path, body, headers, timeout)
 	if err != nil {
@@ -1871,11 +1871,11 @@ func doWithTimeout(t *testing.T, proc *hybridProcess, method, path, body string,
 	return resp, data
 }
 
-func postChatResult(proc *hybridProcess, body string, headers http.Header, timeout time.Duration) (*http.Response, []byte, error) {
+func postChatResult(proc *allRouterProcess, body string, headers http.Header, timeout time.Duration) (*http.Response, []byte, error) {
 	return doResult(proc, http.MethodPost, chatPath, body, headers, timeout)
 }
 
-func doResult(proc *hybridProcess, method, path, body string, headers http.Header, timeout time.Duration) (*http.Response, []byte, error) {
+func doResult(proc *allRouterProcess, method, path, body string, headers http.Header, timeout time.Duration) (*http.Response, []byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	var reader io.Reader
@@ -1903,12 +1903,12 @@ func doResult(proc *hybridProcess, method, path, body string, headers http.Heade
 	return resp, data, nil
 }
 
-func openChat(t *testing.T, proc *hybridProcess, body string, headers http.Header) (*http.Response, error) {
+func openChat(t *testing.T, proc *allRouterProcess, body string, headers http.Header) (*http.Response, error) {
 	t.Helper()
 	return openChatWithTimeout(t, proc, body, headers, 5*time.Second)
 }
 
-func openChatWithTimeout(t *testing.T, proc *hybridProcess, body string, headers http.Header, timeout time.Duration) (*http.Response, error) {
+func openChatWithTimeout(t *testing.T, proc *allRouterProcess, body string, headers http.Header, timeout time.Duration) (*http.Response, error) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, proc.baseURL+chatPath, strings.NewReader(body))
@@ -1927,7 +1927,7 @@ func openChatWithTimeout(t *testing.T, proc *hybridProcess, body string, headers
 	return resp, nil
 }
 
-func openMessagesWithTimeout(t *testing.T, proc *hybridProcess, body string, headers http.Header, timeout time.Duration) (*http.Response, error) {
+func openMessagesWithTimeout(t *testing.T, proc *allRouterProcess, body string, headers http.Header, timeout time.Duration) (*http.Response, error) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, proc.baseURL+messagesPath, strings.NewReader(body))
@@ -2002,27 +2002,27 @@ func assertStatsShape(t *testing.T, body []byte) {
 
 func assertRoute(t *testing.T, resp *http.Response, route, reason string) {
 	t.Helper()
-	if got := resp.Header.Get("X-Hybrid-Route"); got != route {
-		t.Fatalf("X-Hybrid-Route = %q, want %q", got, route)
+	if got := resp.Header.Get("X-AllRouter-Route"); got != route {
+		t.Fatalf("X-AllRouter-Route = %q, want %q", got, route)
 	}
-	if got := resp.Header.Get("X-Hybrid-Reason"); got != reason {
-		t.Fatalf("X-Hybrid-Reason = %q, want %q", got, reason)
+	if got := resp.Header.Get("X-AllRouter-Reason"); got != reason {
+		t.Fatalf("X-AllRouter-Reason = %q, want %q", got, reason)
 	}
 }
 
-func assertHybridBlock(t *testing.T, body []byte, route, reason string) {
+func assertAllRouterBlock(t *testing.T, body []byte, route, reason string) {
 	t.Helper()
 	var payload struct {
-		Hybrid struct {
+		AllRouter struct {
 			Route  string `json:"route"`
 			Reason string `json:"reason"`
-		} `json:"hybrid"`
+		} `json:"allrouter"`
 	}
 	if err := json.Unmarshal(body, &payload); err != nil {
 		t.Fatalf("response is not JSON: %v\n%s", err, body)
 	}
-	if payload.Hybrid.Route != route || payload.Hybrid.Reason != reason {
-		t.Fatalf("hybridrouter block = %#v, want %s/%s body=%s", payload.Hybrid, route, reason, body)
+	if payload.AllRouter.Route != route || payload.AllRouter.Reason != reason {
+		t.Fatalf("allrouter block = %#v, want %s/%s body=%s", payload.AllRouter, route, reason, body)
 	}
 }
 
@@ -2126,7 +2126,7 @@ func assertErrorEnvelope(t *testing.T, body []byte) {
 	if err := json.Unmarshal(body, &payload); err != nil {
 		t.Fatalf("error body is not JSON: %v\n%s", err, body)
 	}
-	if payload.Error.Code == "" || payload.Error.Source != "hybrid" {
+	if payload.Error.Code == "" || payload.Error.Source != "allrouter" {
 		t.Fatalf("bad error envelope: %s", body)
 	}
 }

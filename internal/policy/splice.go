@@ -9,7 +9,7 @@ import (
 )
 
 // isRewrittenKey reports whether key (already lowercased) is a top-level key
-// HybridRouter reads for routing or rewrites in the forwarded body, and so must
+// AllRouter reads for routing or rewrites in the forwarded body, and so must
 // appear at most once in canonical lowercase form.
 func isRewrittenKey(key string) bool {
 	switch key {
@@ -225,7 +225,7 @@ func scanTopLevelObject(raw []byte) (objectScan, error) {
 		if err := json.Unmarshal(raw[i:keyEnd], &key); err != nil {
 			return objectScan{}, err
 		}
-		// For the top-level keys HybridRouter reads or rewrites, require exactly one
+		// For the top-level keys AllRouter reads or rewrites, require exactly one
 		// occurrence in canonical lowercase form. encoding/json matches struct
 		// fields case-insensitively and takes the last duplicate, whereas our raw
 		// splicing is exact-case and takes the first — so a non-canonical-case or

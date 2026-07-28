@@ -16,9 +16,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Lore-Hex/HybridRouter/internal/autodetect"
-	"github.com/Lore-Hex/HybridRouter/internal/config"
-	"github.com/Lore-Hex/HybridRouter/internal/proxy"
+	"github.com/Lore-Hex/AllRouter/internal/autodetect"
+	"github.com/Lore-Hex/AllRouter/internal/config"
+	"github.com/Lore-Hex/AllRouter/internal/proxy"
 )
 
 var version = "dev"
@@ -55,12 +55,12 @@ func main() {
 				ModelCountKnown: true,
 				Autodetected:    true,
 			}
-			log.Printf("hybridrouter autodetect: found %s at %s with %d models", result.Name, result.URL, result.ModelCount)
+			log.Printf("allrouter autodetect: found %s at %s with %d models", result.Name, result.URL, result.ModelCount)
 		} else if cfg.HasTrustedRouter() {
-			log.Printf("hybridrouter autodetect: no local server found; running pure TrustedRouter passthrough mode")
+			log.Printf("allrouter autodetect: no local server found; running pure TrustedRouter passthrough mode")
 		}
 	} else if !cfg.HasLocal() && cfg.HasTrustedRouter() {
-		log.Printf("hybridrouter autodetect: disabled; running pure TrustedRouter passthrough mode")
+		log.Printf("allrouter autodetect: disabled; running pure TrustedRouter passthrough mode")
 	}
 	if err := config.ValidateRuntime(cfg); err != nil {
 		log.Fatal(err)
@@ -86,7 +86,7 @@ func main() {
 		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
-	log.Printf("hybridrouter listening on %s", cfg.Listen)
+	log.Printf("allrouter listening on %s", cfg.Listen)
 
 	hup := make(chan os.Signal, 1)
 	signal.Notify(hup, syscall.SIGHUP)
@@ -147,7 +147,7 @@ func configuredLocalInfo(rawURL string) localBannerInfo {
 }
 
 func printBootBanner(w io.Writer, cfg config.Config, local localBannerInfo, savings proxy.SavingsTotals) {
-	fmt.Fprintf(w, "HybridRouter %s\n", version)
+	fmt.Fprintf(w, "AllRouter %s\n", version)
 	if local.URL == "" {
 		fmt.Fprintln(w, "local: disabled (pure cloud passthrough)")
 	} else {

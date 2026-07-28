@@ -389,7 +389,7 @@ func TestDecideRejectsNonCanonicalTopLevelKeys(t *testing.T) {
 	t.Parallel()
 
 	// encoding/json matches fields case-insensitively; the raw splice is
-	// exact-case. A non-canonical spelling of a key Hybrid reads/rewrites would
+	// exact-case. A non-canonical spelling of a key AllRouter reads/rewrites would
 	// let the routing decision and the body rewrite disagree, so it is rejected.
 	for _, raw := range [][]byte{
 		[]byte(`{"model":"openai/gpt-4o","Model":"local/qwen","messages":[]}`),
@@ -563,7 +563,7 @@ func TestDecideTrustedRouterOnly(t *testing.T) {
 func TestDecideRejectsDuplicateTopLevelKeys(t *testing.T) {
 	t.Parallel()
 
-	// Duplicate occurrences of any key HybridRouter reads or rewrites are
+	// Duplicate occurrences of any key AllRouter reads or rewrites are
 	// ambiguous (last-wins decoders vs first-occurrence splicing), so they are
 	// refused rather than folded/rewritten into a corrupted body.
 	for _, raw := range [][]byte{
@@ -635,13 +635,13 @@ func TestRawSpliceHelpers(t *testing.T) {
 		assertJSONEqual(t, got, []byte(`{"model":"llama\"3","messages":[]}`))
 	})
 
-	t.Run("inject hybridrouter object", func(t *testing.T) {
+	t.Run("inject allrouter object", func(t *testing.T) {
 		t.Parallel()
-		got, err := InjectTopLevelObject([]byte(`{"id":"abc"}`), "hybrid", []byte(`{"route":"local","reason":"policy"}`))
+		got, err := InjectTopLevelObject([]byte(`{"id":"abc"}`), "allrouter", []byte(`{"route":"local","reason":"policy"}`))
 		if err != nil {
 			t.Fatalf("InjectTopLevelObject() error = %v", err)
 		}
-		assertJSONEqual(t, got, []byte(`{"id":"abc","hybrid":{"route":"local","reason":"policy"}}`))
+		assertJSONEqual(t, got, []byte(`{"id":"abc","allrouter":{"route":"local","reason":"policy"}}`))
 	})
 }
 

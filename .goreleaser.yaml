@@ -1,11 +1,11 @@
 version: 2
 
-project_name: hybridrouter
+project_name: allrouter
 
 builds:
-  - id: hybridrouter
-    main: ./cmd/hybridrouter
-    binary: hybridrouter
+  - id: allrouter
+    main: ./cmd/allrouter
+    binary: allrouter
     env:
       - CGO_ENABLED=0
     goos:
@@ -24,7 +24,7 @@ builds:
 archives:
   - id: default
     builds:
-      - hybridrouter
+      - allrouter
     formats:
       - tar.gz
     format_overrides:
@@ -39,19 +39,19 @@ checksum:
   name_template: checksums.txt
 
 brews:
-  - name: hybridrouter
+  - name: allrouter
     repository:
       owner: Lore-Hex
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     directory: Formula
-    homepage: https://github.com/Lore-Hex/HybridRouter
-    description: Hybrid local and cloud LLM router with Claude Code backup
+    homepage: https://github.com/Lore-Hex/AllRouter
+    description: Local and cloud LLM routing with Claude Code backup
     license: Elastic-2.0
     install: |
-      bin.install "hybridrouter"
+      bin.install "allrouter"
     test: |
-      system "#{bin}/hybridrouter", "-version"
+      system "#{bin}/allrouter", "-version"
 
 changelog:
   use: github

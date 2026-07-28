@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Lore-Hex/HybridRouter/internal/config"
+	"github.com/Lore-Hex/AllRouter/internal/config"
 )
 
 const (

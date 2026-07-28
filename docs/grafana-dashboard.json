@@ -37,7 +37,7 @@
       },
       "targets": [
         {
-          "expr": "hybrid_saved_usd_total",
+          "expr": "allrouter_saved_usd_total",
           "legendFormat": "saved"
         }
       ],
@@ -61,7 +61,7 @@
       "id": 2,
       "targets": [
         {
-          "expr": "sum by (route) (rate(hybrid_route_total[5m]))",
+          "expr": "sum by (route) (rate(allrouter_route_total[5m]))",
           "legendFormat": "{{route}}"
         }
       ],
@@ -97,7 +97,7 @@
       },
       "targets": [
         {
-          "expr": "hybrid_in_flight_local",
+          "expr": "allrouter_in_flight_local",
           "legendFormat": "in flight"
         }
       ],
@@ -135,7 +135,7 @@
       },
       "targets": [
         {
-          "expr": "hybrid_cloud_spend_usd_total",
+          "expr": "allrouter_cloud_spend_usd_total",
           "legendFormat": "cloud spend"
         }
       ],
@@ -146,7 +146,7 @@
   "refresh": "5s",
   "schemaVersion": 39,
   "tags": [
-    "hybridrouter"
+    "allrouter"
   ],
   "templating": {
     "list": []
@@ -156,6 +156,6 @@
     "to": "now"
   },
   "timezone": "browser",
-  "title": "HybridRouter",
-  "uid": "hybridrouter"
+  "title": "AllRouter",
+  "uid": "allrouter"
 }

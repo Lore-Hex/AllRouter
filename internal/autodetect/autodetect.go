@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Lore-Hex/HybridRouter/internal/upstream"
+	"github.com/Lore-Hex/AllRouter/internal/upstream"
 )
 
 // DefaultProbeTimeout is the per-candidate local server probe budget.

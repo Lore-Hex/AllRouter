@@ -3,8 +3,8 @@ set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TMPDIR="$(mktemp -d)"
-BIN="$TMPDIR/hybridrouter"
-LOG="$TMPDIR/hybridrouter.log"
+BIN="$TMPDIR/allrouter"
+LOG="$TMPDIR/allrouter.log"
 PID=""
 FAILURES=0
 
@@ -29,24 +29,24 @@ fail() {
 finish() {
   if [[ "$FAILURES" -ne 0 ]]; then
     if [[ -s "$LOG" ]]; then
-      printf '\n--- hybridrouter log ---\n'
+      printf '\n--- allrouter log ---\n'
       cat "$LOG"
     fi
     exit 1
   fi
 }
 
-HYBRID_LOCAL_URL="${HYBRID_LOCAL_URL:-http://127.0.0.1:11434}"
-HYBRID_LISTEN="${HYBRID_LISTEN:-127.0.0.1:8383}"
-if [[ -n "${HYBRID_HOST:-}" ]]; then
-  HOST="$HYBRID_HOST"
-elif [[ "$HYBRID_LISTEN" == :* ]]; then
-  HOST="http://127.0.0.1$HYBRID_LISTEN"
+ALLROUTER_LOCAL_URL="${ALLROUTER_LOCAL_URL:-http://127.0.0.1:11434}"
+ALLROUTER_LISTEN="${ALLROUTER_LISTEN:-127.0.0.1:8383}"
+if [[ -n "${ALLROUTER_HOST:-}" ]]; then
+  HOST="$ALLROUTER_HOST"
+elif [[ "$ALLROUTER_LISTEN" == :* ]]; then
+  HOST="http://127.0.0.1$ALLROUTER_LISTEN"
 else
-  HOST="http://$HYBRID_LISTEN"
+  HOST="http://$ALLROUTER_LISTEN"
 fi
 
-if (cd "$ROOT" && go build -o "$BIN" ./cmd/hybridrouter); then
+if (cd "$ROOT" && go build -o "$BIN" ./cmd/allrouter); then
   pass "build"
 else
   fail "build"
@@ -54,8 +54,8 @@ else
 fi
 
 "$BIN" \
-  -listen "$HYBRID_LISTEN" \
-  -local-url "$HYBRID_LOCAL_URL" \
+  -listen "$ALLROUTER_LISTEN" \
+  -local-url "$ALLROUTER_LOCAL_URL" \
   -tr-api-key "" \
   >"$LOG" 2>&1 &
 PID="$!"
@@ -87,8 +87,8 @@ else
   finish
 fi
 
-if [[ -n "${HYBRID_MODEL:-}" ]]; then
-  MODEL="$HYBRID_MODEL"
+if [[ -n "${ALLROUTER_MODEL:-}" ]]; then
+  MODEL="$ALLROUTER_MODEL"
 else
   MODEL="$(grep -Eo '"id"[[:space:]]*:[[:space:]]*"[^"]+"' "$MODELS_JSON" | sed -E 's/.*"([^"]+)".*/\1/' | grep '^local/' | head -n 1)"
   if [[ -z "$MODEL" ]]; then
@@ -112,7 +112,7 @@ if curl -fsS -D "$CHAT_HEADERS" -o "$CHAT_BODY" \
   "$HOST/v1/chat/completions" \
   -H "Content-Type: application/json" \
   -d "$CHAT_PAYLOAD" &&
-  grep -qi '^X-Hybrid-Route: local' "$CHAT_HEADERS" &&
+  grep -qi '^X-AllRouter-Route: local' "$CHAT_HEADERS" &&
   [[ -s "$CHAT_BODY" ]]; then
   pass "local chat"
 else
@@ -126,7 +126,7 @@ if curl -fsS -N --max-time 90 -D "$STREAM_HEADERS" -o "$STREAM_BODY" \
   "$HOST/v1/chat/completions" \
   -H "Content-Type: application/json" \
   -d "$STREAM_PAYLOAD" &&
-  grep -qi '^X-Hybrid-Route: local' "$STREAM_HEADERS" &&
+  grep -qi '^X-AllRouter-Route: local' "$STREAM_HEADERS" &&
   grep -q '^data:' "$STREAM_BODY" &&
   grep -q '\[DONE\]' "$STREAM_BODY"; then
   pass "local stream"

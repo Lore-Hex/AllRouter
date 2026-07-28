@@ -95,7 +95,7 @@ func TestParseValidationAndUsage(t *testing.T) {
 	if _, err := Parse([]string{"-h"}, envLookup(nil), &usage); err == nil {
 		t.Fatal("Parse(-h) error = nil, want flag.ErrHelp")
 	}
-	for _, want := range []string{"-listen", "HYBRID_LOCAL_URL", "TRUSTEDROUTER_API_KEY", "HYBRID_TR_CATALOG_URL", "HYBRID_LOCAL_SLOW_AFTER", "HYBRID_BURST_ON_ERROR", "HYBRID_BURST_FALLBACK_MODEL", "HYBRID_PRESET", "HYBRID_BACKUP_MODELS", "HYBRID_ALIASES", "HYBRID_SAVINGS_REFERENCE", "HYBRID_STATE_FILE", "HYBRID_CONFIG_FILE", "HYBRID_CLOUD", "HYBRID_MAX_CLOUD_SPEND", "HYBRID_SSE_BATCH_WINDOW", "HYBRID_SSE_BATCH_MAX_BYTES", "-no-autodetect", "-version"} {
+	for _, want := range []string{"-listen", "ALLROUTER_LOCAL_URL", "TRUSTEDROUTER_API_KEY", "ALLROUTER_TR_CATALOG_URL", "ALLROUTER_LOCAL_SLOW_AFTER", "ALLROUTER_BURST_ON_ERROR", "ALLROUTER_BURST_FALLBACK_MODEL", "ALLROUTER_PRESET", "ALLROUTER_BACKUP_MODELS", "ALLROUTER_ALIASES", "ALLROUTER_SAVINGS_REFERENCE", "ALLROUTER_STATE_FILE", "ALLROUTER_CONFIG_FILE", "ALLROUTER_CLOUD", "ALLROUTER_MAX_CLOUD_SPEND", "ALLROUTER_SSE_BATCH_WINDOW", "ALLROUTER_SSE_BATCH_MAX_BYTES", "-no-autodetect", "-version"} {
 		if !strings.Contains(usage.String(), want) {
 			t.Fatalf("usage missing %q:\n%s", want, usage.String())
 		}

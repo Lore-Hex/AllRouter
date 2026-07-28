@@ -200,7 +200,7 @@ func parseToolInput(arguments string) any {
 	}
 	var input any
 	if err := decodeUseNumber([]byte(arguments), &input); err != nil {
-		log.Printf("hybridrouter anthropic: local tool_call arguments were not valid JSON: %v", err)
+		log.Printf("allrouter anthropic: local tool_call arguments were not valid JSON: %v", err)
 		return map[string]any{}
 	}
 	return input

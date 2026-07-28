@@ -21,9 +21,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Lore-Hex/HybridRouter/internal/config"
-	"github.com/Lore-Hex/HybridRouter/internal/policy"
-	"github.com/Lore-Hex/HybridRouter/internal/upstream"
+	"github.com/Lore-Hex/AllRouter/internal/config"
+	"github.com/Lore-Hex/AllRouter/internal/policy"
+	"github.com/Lore-Hex/AllRouter/internal/upstream"
 )
 
 func TestChatDirectiveMatrix(t *testing.T) {
@@ -135,10 +135,10 @@ func TestChatDirectiveMatrix(t *testing.T) {
 			}, local, tr)
 
 			resp, body := postChat(t, proxy, tt.body, "")
-			if resp.Header.Get("X-Hybrid-Route") != tt.wantRoute || resp.Header.Get("X-Hybrid-Reason") != tt.wantReason {
-				t.Fatalf("route headers = %s/%s", resp.Header.Get("X-Hybrid-Route"), resp.Header.Get("X-Hybrid-Reason"))
+			if resp.Header.Get("X-AllRouter-Route") != tt.wantRoute || resp.Header.Get("X-AllRouter-Reason") != tt.wantReason {
+				t.Fatalf("route headers = %s/%s", resp.Header.Get("X-AllRouter-Route"), resp.Header.Get("X-AllRouter-Reason"))
 			}
-			assertHybridBlock(t, body, tt.wantRoute, tt.wantReason)
+			assertAllRouterBlock(t, body, tt.wantRoute, tt.wantReason)
 
 			if tt.wantLocal && localCalls.Load() != 1 {
 				t.Fatalf("local calls = %d, want 1", localCalls.Load())
@@ -257,10 +257,10 @@ func TestEmbeddingsDirectiveMatrix(t *testing.T) {
 			}, local, tr)
 
 			resp, body := postJSON(t, proxy, embeddingsPath, tt.body, "")
-			if resp.Header.Get("X-Hybrid-Route") != tt.wantRoute || resp.Header.Get("X-Hybrid-Reason") != tt.wantReason {
-				t.Fatalf("route headers = %s/%s", resp.Header.Get("X-Hybrid-Route"), resp.Header.Get("X-Hybrid-Reason"))
+			if resp.Header.Get("X-AllRouter-Route") != tt.wantRoute || resp.Header.Get("X-AllRouter-Reason") != tt.wantReason {
+				t.Fatalf("route headers = %s/%s", resp.Header.Get("X-AllRouter-Route"), resp.Header.Get("X-AllRouter-Reason"))
 			}
-			assertHybridBlock(t, body, tt.wantRoute, tt.wantReason)
+			assertAllRouterBlock(t, body, tt.wantRoute, tt.wantReason)
 
 			if tt.wantLocal && localCalls.Load() != 1 {
 				t.Fatalf("local calls = %d, want 1", localCalls.Load())
@@ -320,10 +320,10 @@ func TestTrustedRouterOnlyDirectiveMatrix(t *testing.T) {
 			if resp.StatusCode != http.StatusOK {
 				t.Fatalf("status = %d body=%s", resp.StatusCode, body)
 			}
-			if resp.Header.Get("X-Hybrid-Route") != "trustedrouter" || resp.Header.Get("X-Hybrid-Reason") != "policy" {
-				t.Fatalf("route headers = %s/%s", resp.Header.Get("X-Hybrid-Route"), resp.Header.Get("X-Hybrid-Reason"))
+			if resp.Header.Get("X-AllRouter-Route") != "trustedrouter" || resp.Header.Get("X-AllRouter-Reason") != "policy" {
+				t.Fatalf("route headers = %s/%s", resp.Header.Get("X-AllRouter-Route"), resp.Header.Get("X-AllRouter-Reason"))
 			}
-			assertHybridBlock(t, body, "trustedrouter", "policy")
+			assertAllRouterBlock(t, body, "trustedrouter", "policy")
 			if calls.Load() != 1 {
 				t.Fatalf("tr calls = %d, want 1", calls.Load())
 			}
@@ -342,8 +342,8 @@ func TestTrustedRouterOnlyDirectiveMatrix(t *testing.T) {
 			if resp.StatusCode != http.StatusOK {
 				t.Fatalf("status = %d body=%s", resp.StatusCode, body)
 			}
-			if resp.Header.Get("X-Hybrid-Route") != "trustedrouter" || resp.Header.Get("X-Hybrid-Reason") != "forced" {
-				t.Fatalf("route headers = %s/%s", resp.Header.Get("X-Hybrid-Route"), resp.Header.Get("X-Hybrid-Reason"))
+			if resp.Header.Get("X-AllRouter-Route") != "trustedrouter" || resp.Header.Get("X-AllRouter-Reason") != "forced" {
+				t.Fatalf("route headers = %s/%s", resp.Header.Get("X-AllRouter-Route"), resp.Header.Get("X-AllRouter-Reason"))
 			}
 			if trCalls.Load() != 1 {
 				t.Fatalf("tr calls = %d, want 1", trCalls.Load())
@@ -363,8 +363,8 @@ func TestTrustedRouterOnlyDirectiveMatrix(t *testing.T) {
 				if resp.StatusCode != http.StatusBadRequest {
 					t.Fatalf("status = %d body=%s", resp.StatusCode, got)
 				}
-				if resp.Header.Get("X-Hybrid-Route") != "local" || resp.Header.Get("X-Hybrid-Reason") != "forced" {
-					t.Fatalf("route headers = %s/%s", resp.Header.Get("X-Hybrid-Route"), resp.Header.Get("X-Hybrid-Reason"))
+				if resp.Header.Get("X-AllRouter-Route") != "local" || resp.Header.Get("X-AllRouter-Reason") != "forced" {
+					t.Fatalf("route headers = %s/%s", resp.Header.Get("X-AllRouter-Route"), resp.Header.Get("X-AllRouter-Reason"))
 				}
 				if !bytes.Contains(got, []byte("endpoint_not_supported")) {
 					t.Fatalf("body = %s", got)
@@ -412,8 +412,8 @@ func TestMessagesLocalTranslationAndCloudPassthrough(t *testing.T) {
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("status = %d body=%s", resp.StatusCode, body)
 		}
-		if resp.Header.Get("X-Hybrid-Route") != "trustedrouter" || resp.Header.Get("X-Hybrid-Reason") != "policy" {
-			t.Fatalf("route headers = %s/%s", resp.Header.Get("X-Hybrid-Route"), resp.Header.Get("X-Hybrid-Reason"))
+		if resp.Header.Get("X-AllRouter-Route") != "trustedrouter" || resp.Header.Get("X-AllRouter-Reason") != "policy" {
+			t.Fatalf("route headers = %s/%s", resp.Header.Get("X-AllRouter-Route"), resp.Header.Get("X-AllRouter-Reason"))
 		}
 		if got := <-seenBody; !bytes.Equal(got, []byte(raw)) {
 			t.Fatalf("trustedrouter body = %s, want byte-identical %s", got, raw)
@@ -499,8 +499,8 @@ func TestMessagesLocalTranslationAndCloudPassthrough(t *testing.T) {
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("status = %d body=%s", resp.StatusCode, body)
 		}
-		if resp.Header.Get("X-Hybrid-Route") != "local" || resp.Header.Get("X-Hybrid-Reason") != "policy" {
-			t.Fatalf("route headers = %s/%s", resp.Header.Get("X-Hybrid-Route"), resp.Header.Get("X-Hybrid-Reason"))
+		if resp.Header.Get("X-AllRouter-Route") != "local" || resp.Header.Get("X-AllRouter-Reason") != "policy" {
+			t.Fatalf("route headers = %s/%s", resp.Header.Get("X-AllRouter-Route"), resp.Header.Get("X-AllRouter-Reason"))
 		}
 		assertJSONEqual(t, <-seenBody, []byte(`{"model":"llama3","messages":[{"role":"user","content":"ping"}],"max_tokens":16,"stream":false}`))
 		assertAnthropicMessageText(t, body, "anthropic/claude-haiku-4.5", "pong", 7, 2)
@@ -608,8 +608,8 @@ func TestMessagesBurstOnFullSendsRawAnthropicBody(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("burst status = %d body=%s", resp.StatusCode, body)
 	}
-	if resp.Header.Get("X-Hybrid-Route") != "trustedrouter" || resp.Header.Get("X-Hybrid-Reason") != "burst-full" {
-		t.Fatalf("route headers = %s/%s", resp.Header.Get("X-Hybrid-Route"), resp.Header.Get("X-Hybrid-Reason"))
+	if resp.Header.Get("X-AllRouter-Route") != "trustedrouter" || resp.Header.Get("X-AllRouter-Reason") != "burst-full" {
+		t.Fatalf("route headers = %s/%s", resp.Header.Get("X-AllRouter-Route"), resp.Header.Get("X-AllRouter-Reason"))
 	}
 	if got := <-seenTR; !bytes.Equal(got, []byte(raw)) {
 		t.Fatalf("trustedrouter burst body = %s, want %s", got, raw)
@@ -627,8 +627,8 @@ func TestFailClosedMissingPinnedUpstreams(t *testing.T) {
 		if resp.StatusCode != http.StatusBadGateway {
 			t.Fatalf("status = %d body=%s", resp.StatusCode, body)
 		}
-		if resp.Header.Get("X-Hybrid-Route") != "local" || resp.Header.Get("X-Hybrid-Reason") != "policy" {
-			t.Fatalf("route headers = %s/%s", resp.Header.Get("X-Hybrid-Route"), resp.Header.Get("X-Hybrid-Reason"))
+		if resp.Header.Get("X-AllRouter-Route") != "local" || resp.Header.Get("X-AllRouter-Reason") != "policy" {
+			t.Fatalf("route headers = %s/%s", resp.Header.Get("X-AllRouter-Route"), resp.Header.Get("X-AllRouter-Reason"))
 		}
 		if !bytes.Contains(body, []byte("local upstream is not configured; request is pinned to local")) {
 			t.Fatalf("body = %s", body)
@@ -650,8 +650,8 @@ func TestFailClosedMissingPinnedUpstreams(t *testing.T) {
 			if resp.StatusCode != http.StatusBadGateway {
 				t.Fatalf("status = %d body=%s", resp.StatusCode, body)
 			}
-			if resp.Header.Get("X-Hybrid-Route") != "trustedrouter" || resp.Header.Get("X-Hybrid-Reason") != "policy" {
-				t.Fatalf("route headers = %s/%s", resp.Header.Get("X-Hybrid-Route"), resp.Header.Get("X-Hybrid-Reason"))
+			if resp.Header.Get("X-AllRouter-Route") != "trustedrouter" || resp.Header.Get("X-AllRouter-Reason") != "policy" {
+				t.Fatalf("route headers = %s/%s", resp.Header.Get("X-AllRouter-Route"), resp.Header.Get("X-AllRouter-Reason"))
 			}
 			if !bytes.Contains(body, []byte("TrustedRouter is not configured; request requires providers")) {
 				t.Fatalf("body = %s", body)
@@ -746,7 +746,7 @@ func TestDefaultLocalStripsProviderAndBurstsUseOriginalBody(t *testing.T) {
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("status = %d body=%s", resp.StatusCode, body)
 		}
-		assertHybridBlock(t, body, "local", "policy")
+		assertAllRouterBlock(t, body, "local", "policy")
 	})
 
 	t.Run("burst full sends original body to trustedrouter", func(t *testing.T) {
@@ -792,7 +792,7 @@ func TestDefaultLocalStripsProviderAndBurstsUseOriginalBody(t *testing.T) {
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("burst status = %d body=%s", resp.StatusCode, body)
 		}
-		assertHybridBlock(t, body, "trustedrouter", "burst-full")
+		assertAllRouterBlock(t, body, "trustedrouter", "burst-full")
 		if got := <-trBody; !bytes.Equal(got, []byte(raw)) {
 			t.Fatalf("trustedrouter body = %s, want verbatim %s", got, raw)
 		}
@@ -823,7 +823,7 @@ func TestDefaultLocalStripsProviderAndBurstsUseOriginalBody(t *testing.T) {
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("status = %d body=%s", resp.StatusCode, body)
 		}
-		assertHybridBlock(t, body, "trustedrouter", "burst-error")
+		assertAllRouterBlock(t, body, "trustedrouter", "burst-error")
 
 		bodyMu.Lock()
 		gotLocal := append([]byte(nil), localBody...)
@@ -858,7 +858,7 @@ func TestAliasRoutingAndBurstBodies(t *testing.T) {
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("status = %d body=%s", resp.StatusCode, body)
 		}
-		assertHybridBlock(t, body, "local", "policy")
+		assertAllRouterBlock(t, body, "local", "policy")
 	})
 
 	t.Run("aliased request bursts with original model", func(t *testing.T) {
@@ -907,7 +907,7 @@ func TestAliasRoutingAndBurstBodies(t *testing.T) {
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("burst status = %d body=%s", resp.StatusCode, body)
 		}
-		assertHybridBlock(t, body, "trustedrouter", "burst-full")
+		assertAllRouterBlock(t, body, "trustedrouter", "burst-full")
 		if got := <-trBody; !bytes.Equal(got, []byte(`{"model":"gpt-4o","messages":[]}`)) {
 			t.Fatalf("trustedrouter body = %s, want original alias key", got)
 		}
@@ -956,8 +956,8 @@ func TestUnmappedLocalModelBurstSuppressionAndFallback(t *testing.T) {
 		if resp.Header.Get("Retry-After") != "1" {
 			t.Fatalf("Retry-After = %q", resp.Header.Get("Retry-After"))
 		}
-		if resp.Header.Get("X-Hybrid-Route") != "local" || resp.Header.Get("X-Hybrid-Reason") != "burst-full" {
-			t.Fatalf("route headers = %s/%s", resp.Header.Get("X-Hybrid-Route"), resp.Header.Get("X-Hybrid-Reason"))
+		if resp.Header.Get("X-AllRouter-Route") != "local" || resp.Header.Get("X-AllRouter-Reason") != "burst-full" {
+			t.Fatalf("route headers = %s/%s", resp.Header.Get("X-AllRouter-Route"), resp.Header.Get("X-AllRouter-Reason"))
 		}
 		if trCalls.Load() != 0 {
 			t.Fatalf("tr calls = %d, want 0", trCalls.Load())
@@ -984,7 +984,7 @@ func TestUnmappedLocalModelBurstSuppressionAndFallback(t *testing.T) {
 		if resp.StatusCode != http.StatusInternalServerError {
 			t.Fatalf("status = %d body=%s", resp.StatusCode, body)
 		}
-		assertHybridBlock(t, body, "local", "policy")
+		assertAllRouterBlock(t, body, "local", "policy")
 		if trCalls.Load() != 0 {
 			t.Fatalf("tr calls = %d, want 0", trCalls.Load())
 		}
@@ -1035,7 +1035,7 @@ func TestUnmappedLocalModelBurstSuppressionAndFallback(t *testing.T) {
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("status = %d body=%s", resp.StatusCode, body)
 		}
-		assertHybridBlock(t, body, "trustedrouter", "burst-full")
+		assertAllRouterBlock(t, body, "trustedrouter", "burst-full")
 		assertJSONEqual(t, <-trBody, []byte(`{"model":"openai/gpt-4o-mini","messages":[]}`))
 
 		release()
@@ -1073,25 +1073,25 @@ func TestBurstOnFullReleasesSemaphore(t *testing.T) {
 		if resp.StatusCode != http.StatusOK {
 			t.Errorf("first status = %d", resp.StatusCode)
 		}
-		assertHybridBlock(t, body, "local", "policy")
+		assertAllRouterBlock(t, body, "local", "policy")
 		close(firstDone)
 	}()
 	<-enteredLocal
 
 	secondResp, secondBody := postChat(t, proxy, `{"model":"openai/gpt-4o","messages":[]}`, "")
-	if secondResp.Header.Get("X-Hybrid-Reason") != "burst-full" {
-		t.Fatalf("second reason = %s", secondResp.Header.Get("X-Hybrid-Reason"))
+	if secondResp.Header.Get("X-AllRouter-Reason") != "burst-full" {
+		t.Fatalf("second reason = %s", secondResp.Header.Get("X-AllRouter-Reason"))
 	}
-	assertHybridBlock(t, secondBody, "trustedrouter", "burst-full")
+	assertAllRouterBlock(t, secondBody, "trustedrouter", "burst-full")
 
 	close(releaseLocal)
 	<-firstDone
 
 	thirdResp, thirdBody := postChat(t, proxy, `{"model":"openai/gpt-4o","messages":[]}`, "")
-	if thirdResp.Header.Get("X-Hybrid-Route") != "local" {
-		t.Fatalf("third route = %s", thirdResp.Header.Get("X-Hybrid-Route"))
+	if thirdResp.Header.Get("X-AllRouter-Route") != "local" {
+		t.Fatalf("third route = %s", thirdResp.Header.Get("X-AllRouter-Route"))
 	}
-	assertHybridBlock(t, thirdBody, "local", "policy")
+	assertAllRouterBlock(t, thirdBody, "local", "policy")
 	if trCalls.Load() != 1 {
 		t.Fatalf("tr calls = %d, want 1", trCalls.Load())
 	}
@@ -1140,8 +1140,8 @@ func TestAllLocalOnlyDoesNotBurstButOrderLocalCanBurstWhenFull(t *testing.T) {
 	if onlyResp.StatusCode != http.StatusTooManyRequests {
 		t.Fatalf("only-local status = %d body=%s", onlyResp.StatusCode, onlyBody)
 	}
-	if onlyResp.Header.Get("X-Hybrid-Route") != "local" {
-		t.Fatalf("only-local route = %s", onlyResp.Header.Get("X-Hybrid-Route"))
+	if onlyResp.Header.Get("X-AllRouter-Route") != "local" {
+		t.Fatalf("only-local route = %s", onlyResp.Header.Get("X-AllRouter-Route"))
 	}
 	if trCalls.Load() != 0 {
 		t.Fatalf("tr calls after only-local = %d, want 0", trCalls.Load())
@@ -1151,7 +1151,7 @@ func TestAllLocalOnlyDoesNotBurstButOrderLocalCanBurstWhenFull(t *testing.T) {
 	if orderResp.StatusCode != http.StatusOK {
 		t.Fatalf("order-local status = %d body=%s", orderResp.StatusCode, orderBody)
 	}
-	assertHybridBlock(t, orderBody, "trustedrouter", "burst-full")
+	assertAllRouterBlock(t, orderBody, "trustedrouter", "burst-full")
 	if trCalls.Load() != 1 {
 		t.Fatalf("tr calls after order-local = %d, want 1", trCalls.Load())
 	}
@@ -1174,10 +1174,10 @@ func TestBurstOnError(t *testing.T) {
 		}), handlerTransport{handler: tr})
 
 		resp, body := postChat(t, proxy, `{"model":"openai/gpt-4o","messages":[]}`, "")
-		if resp.Header.Get("X-Hybrid-Reason") != "burst-error" {
-			t.Fatalf("reason = %s", resp.Header.Get("X-Hybrid-Reason"))
+		if resp.Header.Get("X-AllRouter-Reason") != "burst-error" {
+			t.Fatalf("reason = %s", resp.Header.Get("X-AllRouter-Reason"))
 		}
-		assertHybridBlock(t, body, "trustedrouter", "burst-error")
+		assertAllRouterBlock(t, body, "trustedrouter", "burst-error")
 		if trCalls.Load() != 1 {
 			t.Fatalf("tr calls = %d, want 1", trCalls.Load())
 		}
@@ -1194,7 +1194,7 @@ func TestBurstOnError(t *testing.T) {
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("status = %d body=%s", resp.StatusCode, body)
 		}
-		assertHybridBlock(t, body, "trustedrouter", "burst-error")
+		assertAllRouterBlock(t, body, "trustedrouter", "burst-error")
 		if trCalls.Load() != 1 {
 			t.Fatalf("tr calls = %d, want 1", trCalls.Load())
 		}
@@ -1211,8 +1211,8 @@ func TestBurstOnError(t *testing.T) {
 		if resp.StatusCode != http.StatusBadGateway {
 			t.Fatalf("status = %d body=%s", resp.StatusCode, body)
 		}
-		if resp.Header.Get("X-Hybrid-Route") != "local" || resp.Header.Get("X-Hybrid-Reason") != "forced" {
-			t.Fatalf("route headers = %s/%s", resp.Header.Get("X-Hybrid-Route"), resp.Header.Get("X-Hybrid-Reason"))
+		if resp.Header.Get("X-AllRouter-Route") != "local" || resp.Header.Get("X-AllRouter-Reason") != "forced" {
+			t.Fatalf("route headers = %s/%s", resp.Header.Get("X-AllRouter-Route"), resp.Header.Get("X-AllRouter-Reason"))
 		}
 		assertErrorEnvelope(t, body)
 		if trCalls.Load() != 0 {
@@ -1232,7 +1232,7 @@ func TestBurstOnError(t *testing.T) {
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("status = %d body=%s", resp.StatusCode, body)
 		}
-		assertHybridBlock(t, body, "trustedrouter", "burst-error")
+		assertAllRouterBlock(t, body, "trustedrouter", "burst-error")
 		if trCalls.Load() != 1 {
 			t.Fatalf("tr calls = %d, want 1", trCalls.Load())
 		}
@@ -1252,7 +1252,7 @@ func TestBurstOnError(t *testing.T) {
 		if resp.StatusCode != http.StatusNotFound {
 			t.Fatalf("status = %d body=%s", resp.StatusCode, body)
 		}
-		assertHybridBlock(t, body, "local", "policy")
+		assertAllRouterBlock(t, body, "local", "policy")
 		if trCalls.Load() != 0 {
 			t.Fatalf("tr calls = %d, want 0", trCalls.Load())
 		}
@@ -1286,7 +1286,7 @@ func TestBurstOnError(t *testing.T) {
 		if resp.StatusCode != http.StatusInternalServerError {
 			t.Fatalf("status = %d, want 500", resp.StatusCode)
 		}
-		assertHybridBlock(t, body, "local", "policy")
+		assertAllRouterBlock(t, body, "local", "policy")
 		if trCalls.Load() != 0 {
 			t.Fatalf("tr calls = %d, want 0", trCalls.Load())
 		}
@@ -1357,8 +1357,8 @@ func TestSlowLocalFirstByte(t *testing.T) {
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("status = %d body=%s", resp.StatusCode, body)
 		}
-		if resp.Header.Get("X-Hybrid-Route") != "trustedrouter" || resp.Header.Get("X-Hybrid-Reason") != "burst-slow" {
-			t.Fatalf("route headers = %s/%s", resp.Header.Get("X-Hybrid-Route"), resp.Header.Get("X-Hybrid-Reason"))
+		if resp.Header.Get("X-AllRouter-Route") != "trustedrouter" || resp.Header.Get("X-AllRouter-Reason") != "burst-slow" {
+			t.Fatalf("route headers = %s/%s", resp.Header.Get("X-AllRouter-Route"), resp.Header.Get("X-AllRouter-Reason"))
 		}
 		if !bytes.Equal(body, []byte("data: tr\n\n")) {
 			t.Fatalf("body = %q, want TrustedRouter stream only", body)
@@ -1409,8 +1409,8 @@ func TestSlowLocalFirstByte(t *testing.T) {
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("status = %d body=%s", resp.StatusCode, body)
 		}
-		if resp.Header.Get("X-Hybrid-Route") != "trustedrouter" || resp.Header.Get("X-Hybrid-Reason") != "burst-slow" {
-			t.Fatalf("route headers = %s/%s", resp.Header.Get("X-Hybrid-Route"), resp.Header.Get("X-Hybrid-Reason"))
+		if resp.Header.Get("X-AllRouter-Route") != "trustedrouter" || resp.Header.Get("X-AllRouter-Reason") != "burst-slow" {
+			t.Fatalf("route headers = %s/%s", resp.Header.Get("X-AllRouter-Route"), resp.Header.Get("X-AllRouter-Reason"))
 		}
 		if !bytes.Equal(body, []byte("data: tr\n\n")) {
 			t.Fatalf("body = %q, want TrustedRouter stream only", body)
@@ -1447,8 +1447,8 @@ func TestSlowLocalFirstByte(t *testing.T) {
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("status = %d body=%s", resp.StatusCode, body)
 		}
-		if resp.Header.Get("X-Hybrid-Route") != "local" || resp.Header.Get("X-Hybrid-Reason") != "policy" {
-			t.Fatalf("route headers = %s/%s", resp.Header.Get("X-Hybrid-Route"), resp.Header.Get("X-Hybrid-Reason"))
+		if resp.Header.Get("X-AllRouter-Route") != "local" || resp.Header.Get("X-AllRouter-Reason") != "policy" {
+			t.Fatalf("route headers = %s/%s", resp.Header.Get("X-AllRouter-Route"), resp.Header.Get("X-AllRouter-Reason"))
 		}
 		if !bytes.Equal(body, []byte("data: local\n\ndata: done\n\n")) {
 			t.Fatalf("body = %q, want full local stream", body)
@@ -1476,8 +1476,8 @@ func TestSlowLocalFirstByte(t *testing.T) {
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("status = %d body=%s", resp.StatusCode, body)
 		}
-		if resp.Header.Get("X-Hybrid-Route") != "local" || resp.Header.Get("X-Hybrid-Reason") != "policy" {
-			t.Fatalf("route headers = %s/%s", resp.Header.Get("X-Hybrid-Route"), resp.Header.Get("X-Hybrid-Reason"))
+		if resp.Header.Get("X-AllRouter-Route") != "local" || resp.Header.Get("X-AllRouter-Reason") != "policy" {
+			t.Fatalf("route headers = %s/%s", resp.Header.Get("X-AllRouter-Route"), resp.Header.Get("X-AllRouter-Reason"))
 		}
 		if !bytes.Equal(body, []byte("data: local\n\n")) {
 			t.Fatalf("body = %q, want local stream", body)
@@ -1505,10 +1505,10 @@ func TestSlowLocalFirstByte(t *testing.T) {
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("status = %d body=%s", resp.StatusCode, body)
 		}
-		if resp.Header.Get("X-Hybrid-Route") != "local" || resp.Header.Get("X-Hybrid-Reason") != "forced" {
-			t.Fatalf("route headers = %s/%s", resp.Header.Get("X-Hybrid-Route"), resp.Header.Get("X-Hybrid-Reason"))
+		if resp.Header.Get("X-AllRouter-Route") != "local" || resp.Header.Get("X-AllRouter-Reason") != "forced" {
+			t.Fatalf("route headers = %s/%s", resp.Header.Get("X-AllRouter-Route"), resp.Header.Get("X-AllRouter-Reason"))
 		}
-		assertHybridBlock(t, body, "local", "forced")
+		assertAllRouterBlock(t, body, "local", "forced")
 		if trCalls.Load() != 0 {
 			t.Fatalf("tr calls = %d, want 0", trCalls.Load())
 		}
@@ -1560,8 +1560,8 @@ func TestBurstOnErrorReleasesLocalSlotBeforeTrustedRouterCompletes(t *testing.T)
 			firstErr <- fmt.Errorf("first status = %d body=%s", resp.StatusCode, body)
 			return
 		}
-		if resp.Header.Get("X-Hybrid-Reason") != "burst-error" {
-			firstErr <- fmt.Errorf("first reason = %s", resp.Header.Get("X-Hybrid-Reason"))
+		if resp.Header.Get("X-AllRouter-Reason") != "burst-error" {
+			firstErr <- fmt.Errorf("first reason = %s", resp.Header.Get("X-AllRouter-Reason"))
 			return
 		}
 		firstErr <- nil
@@ -1577,7 +1577,7 @@ func TestBurstOnErrorReleasesLocalSlotBeforeTrustedRouterCompletes(t *testing.T)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("second status = %d body=%s", resp.StatusCode, body)
 	}
-	assertHybridBlock(t, body, "local", "forced")
+	assertAllRouterBlock(t, body, "local", "forced")
 	select {
 	case <-secondLocal:
 	default:
@@ -1630,7 +1630,7 @@ func TestBurstOnErrorDrainsLocalBodyBeforeTrustedRouter(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d body=%s", resp.StatusCode, body)
 	}
-	assertHybridBlock(t, body, "trustedrouter", "burst-error")
+	assertAllRouterBlock(t, body, "trustedrouter", "burst-error")
 }
 
 func TestUpstreamReadErrorClearsStaleHeaders(t *testing.T) {
@@ -1690,7 +1690,7 @@ func TestInjectedJSONResponseRecomputesContentLengthAndClearsEncoding(t *testing
 	if got := resp.Header.Get("Content-Encoding"); got != "" {
 		t.Fatalf("Content-Encoding = %q, want cleared", got)
 	}
-	assertHybridBlock(t, body, "local", "policy")
+	assertAllRouterBlock(t, body, "local", "policy")
 }
 
 func TestZeroBytesSentGuardDoesNotRetryAfterStreamingStarts(t *testing.T) {
@@ -1708,8 +1708,8 @@ func TestZeroBytesSentGuardDoesNotRetryAfterStreamingStarts(t *testing.T) {
 	proxy := newProxyWithHandlers(t, config.Config{TRAPIKey: "tr-key", BurstOnError: true}, local, tr)
 
 	resp, body := postChat(t, proxy, `{"model":"llama3","stream":true,"messages":[]}`, "")
-	if resp.Header.Get("X-Hybrid-Route") != "local" {
-		t.Fatalf("route = %s", resp.Header.Get("X-Hybrid-Route"))
+	if resp.Header.Get("X-AllRouter-Route") != "local" {
+		t.Fatalf("route = %s", resp.Header.Get("X-AllRouter-Route"))
 	}
 	if string(body) != "data: half\n\n" {
 		t.Fatalf("stream body = %q", body)
@@ -1840,8 +1840,8 @@ func TestTrustedRouterOnlyStreamingPassthrough(t *testing.T) {
 
 			resp, done := openJSON(t, proxy, endpoint, `{"model":"x","stream":true,"messages":[]}`, "")
 			defer done()
-			if resp.Header.Get("X-Hybrid-Route") != "trustedrouter" {
-				t.Fatalf("route = %s", resp.Header.Get("X-Hybrid-Route"))
+			if resp.Header.Get("X-AllRouter-Route") != "trustedrouter" {
+				t.Fatalf("route = %s", resp.Header.Get("X-AllRouter-Route"))
 			}
 			reader := bufio.NewReader(resp.Body)
 			gotFirst := readSSEEvent(t, reader)
@@ -1990,8 +1990,8 @@ func TestTrustedRouterOnlyFailClosed(t *testing.T) {
 		if resp.StatusCode != http.StatusNotImplemented {
 			t.Fatalf("%s status = %d body=%s", endpoint, resp.StatusCode, body)
 		}
-		if resp.Header.Get("X-Hybrid-Route") != "trustedrouter" || resp.Header.Get("X-Hybrid-Reason") != "policy" {
-			t.Fatalf("%s route headers = %s/%s", endpoint, resp.Header.Get("X-Hybrid-Route"), resp.Header.Get("X-Hybrid-Reason"))
+		if resp.Header.Get("X-AllRouter-Route") != "trustedrouter" || resp.Header.Get("X-AllRouter-Reason") != "policy" {
+			t.Fatalf("%s route headers = %s/%s", endpoint, resp.Header.Get("X-AllRouter-Route"), resp.Header.Get("X-AllRouter-Reason"))
 		}
 		if !bytes.Contains(body, []byte("endpoint_not_supported")) || !bytes.Contains(body, []byte("local-only mode")) {
 			t.Fatalf("%s body = %s", endpoint, body)
@@ -2017,8 +2017,8 @@ func TestTrustedRouterOnlyUpstream404MapsTo501(t *testing.T) {
 			if resp.StatusCode != http.StatusNotImplemented {
 				t.Fatalf("status = %d body=%s", resp.StatusCode, body)
 			}
-			if resp.Header.Get("X-Hybrid-Route") != "trustedrouter" || resp.Header.Get("X-Hybrid-Reason") != "policy" {
-				t.Fatalf("route headers = %s/%s", resp.Header.Get("X-Hybrid-Route"), resp.Header.Get("X-Hybrid-Reason"))
+			if resp.Header.Get("X-AllRouter-Route") != "trustedrouter" || resp.Header.Get("X-AllRouter-Reason") != "policy" {
+				t.Fatalf("route headers = %s/%s", resp.Header.Get("X-AllRouter-Route"), resp.Header.Get("X-AllRouter-Reason"))
 			}
 			if !bytes.Contains(body, []byte("endpoint_not_supported")) || !bytes.Contains(body, []byte("configured burst upstream")) {
 				t.Fatalf("body = %s", body)
@@ -2073,7 +2073,7 @@ func TestEmbeddingsBurstOnFull(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("burst status = %d body=%s", resp.StatusCode, body)
 	}
-	assertHybridBlock(t, body, "trustedrouter", "burst-full")
+	assertAllRouterBlock(t, body, "trustedrouter", "burst-full")
 	if trCalls.Load() != 1 {
 		t.Fatalf("tr calls = %d, want 1", trCalls.Load())
 	}
@@ -2095,7 +2095,7 @@ func TestEmbeddingsBurstOn404ModelNotFound(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d body=%s", resp.StatusCode, body)
 	}
-	assertHybridBlock(t, body, "trustedrouter", "burst-error")
+	assertAllRouterBlock(t, body, "trustedrouter", "burst-error")
 	if trCalls.Load() != 1 {
 		t.Fatalf("tr calls = %d, want 1", trCalls.Load())
 	}
@@ -2128,8 +2128,8 @@ func TestLocalOnlyModeFullReturns429(t *testing.T) {
 	if resp.Header.Get("Retry-After") != "1" {
 		t.Fatalf("Retry-After = %q", resp.Header.Get("Retry-After"))
 	}
-	if resp.Header.Get("X-Hybrid-Reason") != "burst-full" {
-		t.Fatalf("reason = %s", resp.Header.Get("X-Hybrid-Reason"))
+	if resp.Header.Get("X-AllRouter-Reason") != "burst-full" {
+		t.Fatalf("reason = %s", resp.Header.Get("X-AllRouter-Reason"))
 	}
 	assertErrorEnvelope(t, body)
 	close(releaseLocal)
@@ -2179,7 +2179,7 @@ func TestLocalQueueWait(t *testing.T) {
 		if secondResp.StatusCode != http.StatusOK {
 			t.Fatalf("second status = %d body=%s", secondResp.StatusCode, secondBody)
 		}
-		assertHybridBlock(t, secondBody, "local", "policy")
+		assertAllRouterBlock(t, secondBody, "local", "policy")
 		if trCalls.Load() != 0 {
 			t.Fatalf("tr calls = %d, want 0", trCalls.Load())
 		}
@@ -2213,7 +2213,7 @@ func TestLocalQueueWait(t *testing.T) {
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("status = %d body=%s", resp.StatusCode, body)
 		}
-		assertHybridBlock(t, body, "trustedrouter", "burst-full")
+		assertAllRouterBlock(t, body, "trustedrouter", "burst-full")
 		if trCalls.Load() != 1 {
 			t.Fatalf("tr calls = %d, want 1", trCalls.Load())
 		}
@@ -2246,7 +2246,7 @@ func TestLocalQueueWait(t *testing.T) {
 		<-enteredLocal
 
 		ctx, cancel := context.WithCancel(context.Background())
-		req := httptest.NewRequest(http.MethodPost, "http://hybridrouter.test/v1/chat/completions", strings.NewReader(`{"model":"llama3","messages":[]}`)).WithContext(ctx)
+		req := httptest.NewRequest(http.MethodPost, "http://allrouter.test/v1/chat/completions", strings.NewReader(`{"model":"llama3","messages":[]}`)).WithContext(ctx)
 		req.Header.Set("Content-Type", "application/json")
 		rec := httptest.NewRecorder()
 		done := make(chan struct{})
@@ -2565,24 +2565,24 @@ func TestMetricsFormatAndValues(t *testing.T) {
 	if got := resp.Header.Get("Content-Type"); !strings.HasPrefix(got, "text/plain; version=0.0.4") {
 		t.Fatalf("Content-Type = %q", got)
 	}
-	if !bytes.Contains(body, []byte("# TYPE hybrid_in_flight_local gauge")) {
+	if !bytes.Contains(body, []byte("# TYPE allrouter_in_flight_local gauge")) {
 		t.Fatalf("metrics missing in-flight gauge TYPE:\n%s", body)
 	}
 	metrics := parsePromMetrics(t, body)
-	assertPromMetric(t, metrics, "hybrid_requests_total", "7")
-	assertPromMetric(t, metrics, `hybrid_in_flight_local`, "2")
-	assertPromMetric(t, metrics, `hybrid_route_total{route="local"}`, "3")
-	assertPromMetric(t, metrics, `hybrid_route_total{route="trustedrouter"}`, "4")
-	assertPromMetric(t, metrics, `hybrid_bursts_total{reason="full"}`, "1")
-	assertPromMetric(t, metrics, `hybrid_bursts_total{reason="error"}`, "2")
-	assertPromMetric(t, metrics, `hybrid_bursts_total{reason="skipped_unmapped"}`, "3")
-	assertPromMetric(t, metrics, `hybrid_saved_usd_total`, "0.000030")
-	assertPromMetric(t, metrics, `hybrid_cloud_spend_usd_total`, "0.000028")
-	assertPromMetric(t, metrics, `hybrid_local_tokens_total{kind="prompt"}`, "10")
-	assertPromMetric(t, metrics, `hybrid_local_tokens_total{kind="completion"}`, "20")
-	assertPromMetric(t, metrics, `hybrid_usage_unknown_total`, "1")
-	assertPromMetric(t, metrics, `hybrid_cloud_blocked_total{reason="budget"}`, "5")
-	assertPromMetric(t, metrics, `hybrid_cloud_blocked_total{reason="mode"}`, "6")
+	assertPromMetric(t, metrics, "allrouter_requests_total", "7")
+	assertPromMetric(t, metrics, `allrouter_in_flight_local`, "2")
+	assertPromMetric(t, metrics, `allrouter_route_total{route="local"}`, "3")
+	assertPromMetric(t, metrics, `allrouter_route_total{route="trustedrouter"}`, "4")
+	assertPromMetric(t, metrics, `allrouter_bursts_total{reason="full"}`, "1")
+	assertPromMetric(t, metrics, `allrouter_bursts_total{reason="error"}`, "2")
+	assertPromMetric(t, metrics, `allrouter_bursts_total{reason="skipped_unmapped"}`, "3")
+	assertPromMetric(t, metrics, `allrouter_saved_usd_total`, "0.000030")
+	assertPromMetric(t, metrics, `allrouter_cloud_spend_usd_total`, "0.000028")
+	assertPromMetric(t, metrics, `allrouter_local_tokens_total{kind="prompt"}`, "10")
+	assertPromMetric(t, metrics, `allrouter_local_tokens_total{kind="completion"}`, "20")
+	assertPromMetric(t, metrics, `allrouter_usage_unknown_total`, "1")
+	assertPromMetric(t, metrics, `allrouter_cloud_blocked_total{reason="budget"}`, "5")
+	assertPromMetric(t, metrics, `allrouter_cloud_blocked_total{reason="mode"}`, "6")
 }
 
 func TestMetricsTokenGate(t *testing.T) {
@@ -2600,7 +2600,7 @@ func TestMetricsTokenGate(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("metrics with token status = %d body=%s", resp.StatusCode, body)
 	}
-	if !bytes.Contains(body, []byte("hybrid_requests_total")) {
+	if !bytes.Contains(body, []byte("allrouter_requests_total")) {
 		t.Fatalf("metrics body = %s", body)
 	}
 }
@@ -2635,7 +2635,7 @@ func TestUIServedGateAndOdometer(t *testing.T) {
 		`data-client="chatgpt"`,
 	} {
 		if !bytes.Contains(body, []byte(want)) {
-			t.Fatalf("ui missing HybridRouter control %s", want)
+			t.Fatalf("ui missing AllRouter control %s", want)
 		}
 	}
 	for _, want := range []string{"Small task model", "Zero retention+", "1M context", "Under $1 / M", "wire_api = \\\"responses\\\"", "Ordinary ChatGPT conversations cannot replace"} {
@@ -2970,7 +2970,7 @@ func TestBackupConfigConcurrentUpdatesAndRequests(t *testing.T) {
 		wait.Add(2)
 		go func() {
 			defer wait.Done()
-			req := httptest.NewRequest(http.MethodPut, "http://hybridrouter.test"+backupConfigPath, strings.NewReader(`{"backup_models":["`+model+`"]}`))
+			req := httptest.NewRequest(http.MethodPut, "http://allrouter.test"+backupConfigPath, strings.NewReader(`{"backup_models":["`+model+`"]}`))
 			req.Header.Set("Content-Type", "application/json")
 			rec := httptest.NewRecorder()
 			proxy.ServeHTTP(rec, req)
@@ -2980,7 +2980,7 @@ func TestBackupConfigConcurrentUpdatesAndRequests(t *testing.T) {
 		}()
 		go func() {
 			defer wait.Done()
-			req := httptest.NewRequest(http.MethodPost, "http://hybridrouter.test"+chatCompletionsPath, strings.NewReader(`{"model":"anthropic/claude-sonnet-5","messages":[]}`))
+			req := httptest.NewRequest(http.MethodPost, "http://allrouter.test"+chatCompletionsPath, strings.NewReader(`{"model":"anthropic/claude-sonnet-5","messages":[]}`))
 			req.Header.Set("Content-Type", "application/json")
 			rec := httptest.NewRecorder()
 			proxy.ServeHTTP(rec, req)
@@ -3211,8 +3211,8 @@ func TestStreamingLocalUsageSavingsAndStreamOptions(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d body=%s", resp.StatusCode, body)
 	}
-	if got := resp.Header.Get("X-Hybrid-Saved-USD"); got == "" {
-		t.Fatal("missing X-Hybrid-Saved-USD")
+	if got := resp.Header.Get("X-AllRouter-Saved-USD"); got == "" {
+		t.Fatal("missing X-AllRouter-Saved-USD")
 	}
 	statsResp, statsBody := get(t, proxy, "/stats", "")
 	if statsResp.StatusCode != http.StatusOK {
@@ -3508,7 +3508,7 @@ func TestCloudBudgetBlocksSecondSend(t *testing.T) {
 	}
 }
 
-func TestHybridJSONInjectionAbsentForStreaming(t *testing.T) {
+func TestAllRouterJSONInjectionAbsentForStreaming(t *testing.T) {
 	local := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var view struct {
 			Stream bool `json:"stream"`
@@ -3524,11 +3524,11 @@ func TestHybridJSONInjectionAbsentForStreaming(t *testing.T) {
 	proxy := newProxyWithHandlers(t, config.Config{BurstOnError: true}, local, nil)
 
 	_, body := postChat(t, proxy, `{"model":"llama3","messages":[]}`, "")
-	assertHybridBlock(t, body, "local", "policy")
+	assertAllRouterBlock(t, body, "local", "policy")
 
 	_, streamBody := postChat(t, proxy, `{"model":"llama3","stream":true,"messages":[]}`, "")
-	if bytes.Contains(streamBody, []byte("hybrid")) {
-		t.Fatalf("stream response contains hybridrouter block: %s", streamBody)
+	if bytes.Contains(streamBody, []byte("allrouter")) {
+		t.Fatalf("stream response contains allrouter block: %s", streamBody)
 	}
 }
 
@@ -3568,7 +3568,7 @@ func TestAcceptEncodingDroppedAndInjectedJSONIsPlaintext(t *testing.T) {
 	if got := resp.Header.Get("Content-Encoding"); got != "" {
 		t.Fatalf("Content-Encoding = %q, want identity", got)
 	}
-	assertHybridBlock(t, body, "local", "policy")
+	assertAllRouterBlock(t, body, "local", "policy")
 }
 
 func TestTokenAuth(t *testing.T) {
@@ -3763,7 +3763,7 @@ func postJSON(t *testing.T, proxy *Server, path, body, token string) (*http.Resp
 
 func postJSONWithHeaders(t *testing.T, proxy *Server, path, body string, headers http.Header) (*http.Response, []byte) {
 	t.Helper()
-	req := httptest.NewRequest(http.MethodPost, "http://hybridrouter.test"+path, strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "http://allrouter.test"+path, strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	for key, values := range headers {
 		req.Header.Del(key)
@@ -3785,7 +3785,7 @@ func postJSONWithHeaders(t *testing.T, proxy *Server, path, body string, headers
 
 func putJSON(t *testing.T, proxy *Server, path, body, token string) (*http.Response, []byte) {
 	t.Helper()
-	req := httptest.NewRequest(http.MethodPut, "http://hybridrouter.test"+path, strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPut, "http://allrouter.test"+path, strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
@@ -3809,7 +3809,7 @@ func openChat(t *testing.T, proxy *Server, body, token string) (*http.Response, 
 
 func openJSON(t *testing.T, proxy *Server, path, body, token string) (*http.Response, func()) {
 	t.Helper()
-	req := httptest.NewRequest(http.MethodPost, "http://hybridrouter.test"+path, strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "http://allrouter.test"+path, strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
@@ -3819,7 +3819,7 @@ func openJSON(t *testing.T, proxy *Server, path, body, token string) (*http.Resp
 
 func get(t *testing.T, proxy *Server, path, token string) (*http.Response, []byte) {
 	t.Helper()
-	req := httptest.NewRequest(http.MethodGet, "http://hybridrouter.test"+path, nil)
+	req := httptest.NewRequest(http.MethodGet, "http://allrouter.test"+path, nil)
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
@@ -3917,19 +3917,19 @@ func readSSEEvent(t *testing.T, reader *bufio.Reader) string {
 	}
 }
 
-func assertHybridBlock(t *testing.T, body []byte, route, reason string) {
+func assertAllRouterBlock(t *testing.T, body []byte, route, reason string) {
 	t.Helper()
 	var payload struct {
-		Hybrid struct {
+		AllRouter struct {
 			Route  string `json:"route"`
 			Reason string `json:"reason"`
-		} `json:"hybrid"`
+		} `json:"allrouter"`
 	}
 	if err := json.Unmarshal(body, &payload); err != nil {
 		t.Fatalf("response is not JSON: %v\n%s", err, body)
 	}
-	if payload.Hybrid.Route != route || payload.Hybrid.Reason != reason {
-		t.Fatalf("hybridrouter block = %#v, want %s/%s body=%s", payload.Hybrid, route, reason, body)
+	if payload.AllRouter.Route != route || payload.AllRouter.Reason != reason {
+		t.Fatalf("allrouter block = %#v, want %s/%s body=%s", payload.AllRouter, route, reason, body)
 	}
 }
 
@@ -3992,7 +3992,7 @@ func assertErrorEnvelope(t *testing.T, body []byte) {
 	if err := json.Unmarshal(body, &payload); err != nil {
 		t.Fatalf("error body is not JSON: %v\n%s", err, body)
 	}
-	if payload.Error.Code == "" || payload.Error.Source != "hybrid" {
+	if payload.Error.Code == "" || payload.Error.Source != "allrouter" {
 		t.Fatalf("bad error envelope: %s", body)
 	}
 }
@@ -4051,8 +4051,8 @@ func assertAliasModel(t *testing.T, body []byte, id, target string) {
 		if model.ID != id {
 			continue
 		}
-		if model.OwnedBy != "hybridrouter-alias" {
-			t.Fatalf("alias %q owned_by = %q, want hybridrouter-alias", id, model.OwnedBy)
+		if model.OwnedBy != "allrouter-alias" {
+			t.Fatalf("alias %q owned_by = %q, want allrouter-alias", id, model.OwnedBy)
 		}
 		if got, _ := model.Metadata["local_target"].(string); got != target {
 			t.Fatalf("alias %q local_target = %q, want %q; metadata=%#v", id, got, target, model.Metadata)

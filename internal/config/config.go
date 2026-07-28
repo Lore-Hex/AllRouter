@@ -17,27 +17,27 @@ import (
 )
 
 const (
-	envListen              = "HYBRID_LISTEN"
-	envLocalURL            = "HYBRID_LOCAL_URL"
+	envListen              = "ALLROUTER_LISTEN"
+	envLocalURL            = "ALLROUTER_LOCAL_URL"
 	envTRAPIKey            = "TRUSTEDROUTER_API_KEY"
-	envTRBaseURL           = "HYBRID_TR_BASE_URL"
-	envTRCatalogURL        = "HYBRID_TR_CATALOG_URL"
-	envLocalMaxConcurrency = "HYBRID_LOCAL_MAX_CONCURRENCY"
-	envLocalQueueWait      = "HYBRID_LOCAL_QUEUE_WAIT"
-	envLocalSlowAfter      = "HYBRID_LOCAL_SLOW_AFTER"
-	envBurstOnError        = "HYBRID_BURST_ON_ERROR"
-	envBurstFallbackModel  = "HYBRID_BURST_FALLBACK_MODEL"
-	envPreset              = "HYBRID_PRESET"
-	envBackupModels        = "HYBRID_BACKUP_MODELS"
-	envToken               = "HYBRID_TOKEN"
-	envAliases             = "HYBRID_ALIASES"
-	envSavingsReference    = "HYBRID_SAVINGS_REFERENCE"
-	envStateFile           = "HYBRID_STATE_FILE"
-	envConfigFile          = "HYBRID_CONFIG_FILE"
-	envCloud               = "HYBRID_CLOUD"
-	envMaxCloudSpend       = "HYBRID_MAX_CLOUD_SPEND"
-	envSSEBatchWindow      = "HYBRID_SSE_BATCH_WINDOW"
-	envSSEBatchMaxBytes    = "HYBRID_SSE_BATCH_MAX_BYTES"
+	envTRBaseURL           = "ALLROUTER_TR_BASE_URL"
+	envTRCatalogURL        = "ALLROUTER_TR_CATALOG_URL"
+	envLocalMaxConcurrency = "ALLROUTER_LOCAL_MAX_CONCURRENCY"
+	envLocalQueueWait      = "ALLROUTER_LOCAL_QUEUE_WAIT"
+	envLocalSlowAfter      = "ALLROUTER_LOCAL_SLOW_AFTER"
+	envBurstOnError        = "ALLROUTER_BURST_ON_ERROR"
+	envBurstFallbackModel  = "ALLROUTER_BURST_FALLBACK_MODEL"
+	envPreset              = "ALLROUTER_PRESET"
+	envBackupModels        = "ALLROUTER_BACKUP_MODELS"
+	envToken               = "ALLROUTER_TOKEN"
+	envAliases             = "ALLROUTER_ALIASES"
+	envSavingsReference    = "ALLROUTER_SAVINGS_REFERENCE"
+	envStateFile           = "ALLROUTER_STATE_FILE"
+	envConfigFile          = "ALLROUTER_CONFIG_FILE"
+	envCloud               = "ALLROUTER_CLOUD"
+	envMaxCloudSpend       = "ALLROUTER_MAX_CLOUD_SPEND"
+	envSSEBatchWindow      = "ALLROUTER_SSE_BATCH_WINDOW"
+	envSSEBatchMaxBytes    = "ALLROUTER_SSE_BATCH_MAX_BYTES"
 )
 
 // DefaultTRCatalogURL is the public TrustedRouter control-plane catalog base URL.
@@ -61,7 +61,7 @@ var defaultBackupModels = []string{
 // MaxBackupModels bounds the configured failover chain and its request size.
 const MaxBackupModels = 16
 
-// CloudMode controls when HybridRouter may send traffic to the cloud upstream.
+// CloudMode controls when AllRouter may send traffic to the cloud upstream.
 type CloudMode string
 
 const (
@@ -70,7 +70,7 @@ const (
 	CloudOff      CloudMode = "off"
 )
 
-// Config is the complete runtime configuration for a HybridRouter process.
+// Config is the complete runtime configuration for an AllRouter process.
 type Config struct {
 	Listen               string
 	LocalURL             string
@@ -116,7 +116,7 @@ func Parse(args []string, lookupEnv func(string) (string, bool), output io.Write
 		return Config{}, err
 	}
 
-	fs := flag.NewFlagSet("hybridrouter", flag.ContinueOnError)
+	fs := flag.NewFlagSet("allrouter", flag.ContinueOnError)
 	fs.SetOutput(output)
 	fs.StringVar(&cfg.Listen, "listen", cfg.Listen, "bind address")
 	fs.StringVar(&cfg.LocalURL, "local-url", cfg.LocalURL, "local OpenAI-compatible base URL")
@@ -142,30 +142,30 @@ func Parse(args []string, lookupEnv func(string) (string, bool), output io.Write
 	fs.BoolVar(&cfg.NoAutodetect, "no-autodetect", cfg.NoAutodetect, "disable local server autodetection when -local-url is unset")
 	fs.BoolVar(&cfg.PrintVersion, "version", cfg.PrintVersion, "print version and exit")
 	fs.Usage = func() {
-		fmt.Fprintln(output, "Usage: hybridrouter [flags]")
+		fmt.Fprintln(output, "Usage: allrouter [flags]")
 		fmt.Fprintln(output)
 		fmt.Fprintln(output, "Flags:")
-		fmt.Fprintln(output, "  -listen                    env HYBRID_LISTEN                  default :8383")
-		fmt.Fprintln(output, "  -local-url                 env HYBRID_LOCAL_URL               default \"\"")
+		fmt.Fprintln(output, "  -listen                    env ALLROUTER_LISTEN                  default :8383")
+		fmt.Fprintln(output, "  -local-url                 env ALLROUTER_LOCAL_URL               default \"\"")
 		fmt.Fprintln(output, "  -tr-api-key                env TRUSTEDROUTER_API_KEY          default \"\"")
-		fmt.Fprintf(output, "  -tr-base-url               env HYBRID_TR_BASE_URL             default %s\n", trustedrouter.DefaultAPIBaseURL)
-		fmt.Fprintf(output, "  -tr-catalog-url            env HYBRID_TR_CATALOG_URL          default %s\n", DefaultTRCatalogURL)
-		fmt.Fprintln(output, "  -local-max-concurrency     env HYBRID_LOCAL_MAX_CONCURRENCY   default 4")
-		fmt.Fprintln(output, "  -local-queue-wait          env HYBRID_LOCAL_QUEUE_WAIT        default 0s")
-		fmt.Fprintln(output, "  -local-slow-after          env HYBRID_LOCAL_SLOW_AFTER        default 0s")
-		fmt.Fprintln(output, "  -burst-on-error            env HYBRID_BURST_ON_ERROR          default true")
-		fmt.Fprintln(output, "  -burst-fallback-model      env HYBRID_BURST_FALLBACK_MODEL    default \"\"")
-		fmt.Fprintln(output, "  -preset                    env HYBRID_PRESET                  default \"\"")
-		fmt.Fprintln(output, "  -backup-model              env HYBRID_BACKUP_MODELS           repeatable; BackupRouter defaults to Kimi K3, GLM 5.2")
-		fmt.Fprintln(output, "  -token                     env HYBRID_TOKEN                   default \"\"")
-		fmt.Fprintln(output, "  -alias                     env HYBRID_ALIASES                 default \"\"")
-		fmt.Fprintln(output, "  -savings-reference         env HYBRID_SAVINGS_REFERENCE       default \"\"")
-		fmt.Fprintln(output, "  -state-file                env HYBRID_STATE_FILE              default $XDG_STATE_HOME/hybridrouter/state.json or ~/.hybridrouter/state.json")
-		fmt.Fprintln(output, "  -config-file               env HYBRID_CONFIG_FILE             default $XDG_CONFIG_HOME/hybridrouter/config.json or ~/.config/hybridrouter/config.json")
-		fmt.Fprintln(output, "  -cloud                     env HYBRID_CLOUD                   default auto")
-		fmt.Fprintln(output, "  -max-cloud-spend           env HYBRID_MAX_CLOUD_SPEND         default 0")
-		fmt.Fprintln(output, "  -sse-batch-window          env HYBRID_SSE_BATCH_WINDOW        default 0s")
-		fmt.Fprintln(output, "  -sse-batch-max-bytes       env HYBRID_SSE_BATCH_MAX_BYTES     default 4096")
+		fmt.Fprintf(output, "  -tr-base-url               env ALLROUTER_TR_BASE_URL             default %s\n", trustedrouter.DefaultAPIBaseURL)
+		fmt.Fprintf(output, "  -tr-catalog-url            env ALLROUTER_TR_CATALOG_URL          default %s\n", DefaultTRCatalogURL)
+		fmt.Fprintln(output, "  -local-max-concurrency     env ALLROUTER_LOCAL_MAX_CONCURRENCY   default 4")
+		fmt.Fprintln(output, "  -local-queue-wait          env ALLROUTER_LOCAL_QUEUE_WAIT        default 0s")
+		fmt.Fprintln(output, "  -local-slow-after          env ALLROUTER_LOCAL_SLOW_AFTER        default 0s")
+		fmt.Fprintln(output, "  -burst-on-error            env ALLROUTER_BURST_ON_ERROR          default true")
+		fmt.Fprintln(output, "  -burst-fallback-model      env ALLROUTER_BURST_FALLBACK_MODEL    default \"\"")
+		fmt.Fprintln(output, "  -preset                    env ALLROUTER_PRESET                  default \"\"")
+		fmt.Fprintln(output, "  -backup-model              env ALLROUTER_BACKUP_MODELS           repeatable; BackupRouter defaults to Kimi K3, GLM 5.2")
+		fmt.Fprintln(output, "  -token                     env ALLROUTER_TOKEN                   default \"\"")
+		fmt.Fprintln(output, "  -alias                     env ALLROUTER_ALIASES                 default \"\"")
+		fmt.Fprintln(output, "  -savings-reference         env ALLROUTER_SAVINGS_REFERENCE       default \"\"")
+		fmt.Fprintln(output, "  -state-file                env ALLROUTER_STATE_FILE              default $XDG_STATE_HOME/allrouter/state.json or ~/.allrouter/state.json")
+		fmt.Fprintln(output, "  -config-file               env ALLROUTER_CONFIG_FILE             default $XDG_CONFIG_HOME/allrouter/config.json or ~/.config/allrouter/config.json")
+		fmt.Fprintln(output, "  -cloud                     env ALLROUTER_CLOUD                   default auto")
+		fmt.Fprintln(output, "  -max-cloud-spend           env ALLROUTER_MAX_CLOUD_SPEND         default 0")
+		fmt.Fprintln(output, "  -sse-batch-window          env ALLROUTER_SSE_BATCH_WINDOW        default 0s")
+		fmt.Fprintln(output, "  -sse-batch-max-bytes       env ALLROUTER_SSE_BATCH_MAX_BYTES     default 4096")
 		fmt.Fprintln(output, "  -no-autodetect             env none                           default false")
 		fmt.Fprintln(output, "  -version                   env none                           default false")
 	}
@@ -362,23 +362,23 @@ func ValidateRuntime(cfg Config) error {
 
 func defaultStateFile(lookupEnv func(string) (string, bool)) string {
 	if stateHome, ok := lookupEnv("XDG_STATE_HOME"); ok && strings.TrimSpace(stateHome) != "" {
-		return filepath.Join(stateHome, "hybridrouter", "state.json")
+		return filepath.Join(stateHome, "allrouter", "state.json")
 	}
 	if home, ok := lookupEnv("HOME"); ok && strings.TrimSpace(home) != "" {
-		return filepath.Join(home, ".hybridrouter", "state.json")
+		return filepath.Join(home, ".allrouter", "state.json")
 	}
 	if home, err := os.UserHomeDir(); err == nil && strings.TrimSpace(home) != "" {
-		return filepath.Join(home, ".hybridrouter", "state.json")
+		return filepath.Join(home, ".allrouter", "state.json")
 	}
 	return ""
 }
 
 func defaultConfigFile(lookupEnv func(string) (string, bool)) string {
 	if configHome, ok := lookupEnv("XDG_CONFIG_HOME"); ok && strings.TrimSpace(configHome) != "" {
-		return filepath.Join(configHome, "hybridrouter", "config.json")
+		return filepath.Join(configHome, "allrouter", "config.json")
 	}
 	if home, ok := lookupEnv("HOME"); ok && strings.TrimSpace(home) != "" {
-		return filepath.Join(home, ".config", "hybridrouter", "config.json")
+		return filepath.Join(home, ".config", "allrouter", "config.json")
 	}
 	return ""
 }

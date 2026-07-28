@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Lore-Hex/HybridRouter/internal/policy"
+	"github.com/Lore-Hex/AllRouter/internal/policy"
 )
 
 const recentDecisionCap = 100
@@ -75,8 +75,8 @@ type recentDecisionWriter struct {
 func (w *recentDecisionWriter) WriteHeader(status int) {
 	if !w.wrote {
 		w.wrote = true
-		route := policy.Route(w.Header().Get("X-Hybrid-Route"))
-		reason := policy.Reason(w.Header().Get("X-Hybrid-Reason"))
+		route := policy.Route(w.Header().Get("X-AllRouter-Route"))
+		reason := policy.Reason(w.Header().Get("X-AllRouter-Reason"))
 		w.stats.recordRecentDecision(w.path, status, route, reason)
 	}
 	w.ResponseWriter.WriteHeader(status)

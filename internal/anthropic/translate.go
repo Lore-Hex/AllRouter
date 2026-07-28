@@ -334,7 +334,7 @@ func parseContentBlock(raw json.RawMessage) (contentBlock, error) {
 		return contentBlock{}, invalidRequest(fmt.Sprintf("content block must be an object: %v", err))
 	}
 	if _, ok := fields["cache_control"]; ok {
-		logOnce("cache_control", "hybridrouter anthropic: dropping cache_control hints on local /v1/messages path")
+		logOnce("cache_control", "allrouter anthropic: dropping cache_control hints on local /v1/messages path")
 	}
 	blockType := rawString(fields["type"])
 	switch blockType {
@@ -373,7 +373,7 @@ func parseContentBlock(raw json.RawMessage) (contentBlock, error) {
 			IsError:   isError,
 		}, nil
 	default:
-		logOnce("content_block:"+blockType, fmt.Sprintf("hybridrouter anthropic: dropping unsupported content block type %q on local /v1/messages path", blockType))
+		logOnce("content_block:"+blockType, fmt.Sprintf("allrouter anthropic: dropping unsupported content block type %q on local /v1/messages path", blockType))
 		return contentBlock{Type: blockType}, nil
 	}
 }
@@ -409,7 +409,7 @@ func toolResultText(content any) (string, error) {
 				return "", invalidRequest(imageUnsupportedMessage)
 			}
 			if _, ok := block["cache_control"]; ok {
-				logOnce("cache_control", "hybridrouter anthropic: dropping cache_control hints on local /v1/messages path")
+				logOnce("cache_control", "allrouter anthropic: dropping cache_control hints on local /v1/messages path")
 			}
 			if text, _ := block["text"].(string); text != "" {
 				out.WriteString(text)
@@ -524,11 +524,11 @@ func logDroppedTopLevelFields(fields map[string]json.RawMessage) {
 		if _, ok := known[key]; ok {
 			switch key {
 			case "anthropic_version", "metadata":
-				logOnce("top:"+key, fmt.Sprintf("hybridrouter anthropic: dropping %s on local /v1/messages path", key))
+				logOnce("top:"+key, fmt.Sprintf("allrouter anthropic: dropping %s on local /v1/messages path", key))
 			}
 			continue
 		}
-		logOnce("top:"+key, fmt.Sprintf("hybridrouter anthropic: dropping unknown top-level field %q on local /v1/messages path", key))
+		logOnce("top:"+key, fmt.Sprintf("allrouter anthropic: dropping unknown top-level field %q on local /v1/messages path", key))
 	}
 }
 

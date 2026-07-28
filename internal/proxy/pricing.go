@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Lore-Hex/HybridRouter/internal/policy"
+	"github.com/Lore-Hex/AllRouter/internal/policy"
 )
 
 func (s *Server) localSavingsPrice(ctx context.Context, decision policy.Decision) priceQuote {

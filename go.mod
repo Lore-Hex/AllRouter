@@ -1,4 +1,4 @@
-module github.com/Lore-Hex/HybridRouter
+module github.com/Lore-Hex/AllRouter
 
 go 1.23
 
