@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Lore-Hex/BurstyRouter/internal/config"
-	"github.com/Lore-Hex/BurstyRouter/internal/proxy"
+	"github.com/Lore-Hex/HybridRouter/internal/config"
+	"github.com/Lore-Hex/HybridRouter/internal/proxy"
 )
 
 func TestPrintBootBannerGolden(t *testing.T) {
@@ -35,7 +35,7 @@ func TestPrintBootBannerGolden(t *testing.T) {
 
 	got := out.String()
 	for _, want := range []string{
-		"BurstyRouter v1.2.3",
+		"HybridRouter v1.2.3",
 		"local: detected Ollama at http://127.0.0.1:11434/v1 (3 models)",
 		"cloud: api.quillrouter.com",
 		"mode: cloud=explicit, max-cloud-spend=$1.250000/day",
@@ -51,6 +51,22 @@ func TestPrintBootBannerGolden(t *testing.T) {
 	}
 }
 
+func TestClientBaseURLUsesConfiguredListener(t *testing.T) {
+	for _, test := range []struct {
+		listen string
+		want   string
+	}{
+		{listen: ":8383", want: "http://localhost:8383/v1"},
+		{listen: "0.0.0.0:9000", want: "http://localhost:9000/v1"},
+		{listen: "127.0.0.1:18383", want: "http://127.0.0.1:18383/v1"},
+		{listen: "[::1]:8383", want: "http://[::1]:8383/v1"},
+	} {
+		if got := clientBaseURL(test.listen); got != test.want {
+			t.Fatalf("clientBaseURL(%q) = %q, want %q", test.listen, got, test.want)
+		}
+	}
+}
+
 func TestConfiguredLocalInfoDoesNotRequireProbe(t *testing.T) {
 	info := configuredLocalInfo("127.0.0.1:11434")
 	if info.URL != "http://127.0.0.1:11434/v1" {
@@ -61,5 +77,17 @@ func TestConfiguredLocalInfoDoesNotRequireProbe(t *testing.T) {
 	}
 	if info.ModelCountKnown {
 		t.Fatal("ModelCountKnown = true, want false")
+	}
+}
+
+func TestModeDisplayBackupRouter(t *testing.T) {
+	got := modeDisplay(config.Config{
+		Preset:       config.PresetBackupRouter,
+		BackupModels: []string{"moonshotai/kimi-k3", "z-ai/glm-5.2"},
+		Cloud:        config.CloudAuto,
+	})
+	want := "preset=backuprouter, backups=moonshotai/kimi-k3,z-ai/glm-5.2"
+	if got != want {
+		t.Fatalf("modeDisplay() = %q, want %q", got, want)
 	}
 }

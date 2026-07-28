@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -15,9 +16,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Lore-Hex/BurstyRouter/internal/autodetect"
-	"github.com/Lore-Hex/BurstyRouter/internal/config"
-	"github.com/Lore-Hex/BurstyRouter/internal/proxy"
+	"github.com/Lore-Hex/HybridRouter/internal/autodetect"
+	"github.com/Lore-Hex/HybridRouter/internal/config"
+	"github.com/Lore-Hex/HybridRouter/internal/proxy"
 )
 
 var version = "dev"
@@ -54,12 +55,12 @@ func main() {
 				ModelCountKnown: true,
 				Autodetected:    true,
 			}
-			log.Printf("bursty autodetect: found %s at %s with %d models", result.Name, result.URL, result.ModelCount)
+			log.Printf("hybridrouter autodetect: found %s at %s with %d models", result.Name, result.URL, result.ModelCount)
 		} else if cfg.HasTrustedRouter() {
-			log.Printf("bursty autodetect: no local server found; running pure TrustedRouter passthrough mode")
+			log.Printf("hybridrouter autodetect: no local server found; running pure TrustedRouter passthrough mode")
 		}
 	} else if !cfg.HasLocal() && cfg.HasTrustedRouter() {
-		log.Printf("bursty autodetect: disabled; running pure TrustedRouter passthrough mode")
+		log.Printf("hybridrouter autodetect: disabled; running pure TrustedRouter passthrough mode")
 	}
 	if err := config.ValidateRuntime(cfg); err != nil {
 		log.Fatal(err)
@@ -85,7 +86,7 @@ func main() {
 		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
-	log.Printf("burstyrouter listening on %s", cfg.Listen)
+	log.Printf("hybridrouter listening on %s", cfg.Listen)
 
 	hup := make(chan os.Signal, 1)
 	signal.Notify(hup, syscall.SIGHUP)
@@ -146,7 +147,7 @@ func configuredLocalInfo(rawURL string) localBannerInfo {
 }
 
 func printBootBanner(w io.Writer, cfg config.Config, local localBannerInfo, savings proxy.SavingsTotals) {
-	fmt.Fprintf(w, "BurstyRouter %s\n", version)
+	fmt.Fprintf(w, "HybridRouter %s\n", version)
 	if local.URL == "" {
 		fmt.Fprintln(w, "local: disabled (pure cloud passthrough)")
 	} else {
@@ -167,7 +168,22 @@ func printBootBanner(w io.Writer, cfg config.Config, local localBannerInfo, savi
 	if savings.HasHistory {
 		fmt.Fprintf(w, "savings: saved $%s (ref: %s), cloud spend $%s\n", formatUSDMicro(savings.SavedUSDMicro), savings.TopReference, formatUSDMicro(savings.CloudSpendUSDMicro))
 	}
-	fmt.Fprintln(w, "Point your tools at http://localhost:8383/v1")
+	fmt.Fprintf(w, "Point your tools at %s\n", clientBaseURL(cfg.Listen))
+}
+
+func clientBaseURL(listen string) string {
+	listen = strings.TrimSpace(listen)
+	if listen == "" {
+		listen = ":8383"
+	}
+	host, port, err := net.SplitHostPort(listen)
+	if err != nil {
+		return "http://localhost:8383/v1"
+	}
+	if host == "" || host == "0.0.0.0" || host == "::" {
+		host = "localhost"
+	}
+	return "http://" + net.JoinHostPort(host, port) + "/v1"
 }
 
 func cloudDisplay(cfg config.Config) string {
@@ -183,6 +199,12 @@ func cloudDisplay(cfg config.Config) string {
 
 func modeDisplay(cfg config.Config) string {
 	parts := []string{}
+	if cfg.Preset != config.PresetNone {
+		parts = append(parts, "preset="+string(cfg.Preset))
+	}
+	if len(cfg.BackupModels) > 0 {
+		parts = append(parts, "backups="+strings.Join(cfg.BackupModels, ","))
+	}
 	if cfg.Cloud != config.CloudAuto {
 		parts = append(parts, "cloud="+string(cfg.Cloud))
 	}

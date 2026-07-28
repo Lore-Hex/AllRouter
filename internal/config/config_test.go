@@ -25,6 +25,7 @@ func TestParseFlagEnvPrecedence(t *testing.T) {
 		envAliases:             "gpt-4o=llama3.2, anthropic/claude-haiku-4.5=llama3.1",
 		envSavingsReference:    "openai/gpt-4o-mini",
 		envStateFile:           "/tmp/env-state.json",
+		envConfigFile:          "/tmp/env-config.json",
 		envCloud:               "explicit",
 		envMaxCloudSpend:       "1.25",
 	}
@@ -40,6 +41,7 @@ func TestParseFlagEnvPrecedence(t *testing.T) {
 		"-alias", "openai/gpt-4.1=qwen2.5-coder:32b",
 		"-savings-reference", "openai/gpt-4.1",
 		"-state-file", "/tmp/flag-state.json",
+		"-config-file", "/tmp/flag-config.json",
 		"-cloud", "off",
 		"-max-cloud-spend", "2.50",
 		"-no-autodetect",
@@ -62,7 +64,7 @@ func TestParseFlagEnvPrecedence(t *testing.T) {
 	if cfg.BurstFallbackModel != "openai/gpt-4o" {
 		t.Fatalf("burst fallback = %q, want flag value", cfg.BurstFallbackModel)
 	}
-	if cfg.SavingsReference != "openai/gpt-4.1" || cfg.StateFile != "/tmp/flag-state.json" || cfg.Cloud != CloudOff {
+	if cfg.SavingsReference != "openai/gpt-4.1" || cfg.StateFile != "/tmp/flag-state.json" || cfg.ConfigFile != "/tmp/flag-config.json" || cfg.Cloud != CloudOff {
 		t.Fatalf("new flag precedence failed: %#v", cfg)
 	}
 	if cfg.MaxCloudSpendMicro != 2_500_000 {
@@ -93,7 +95,7 @@ func TestParseValidationAndUsage(t *testing.T) {
 	if _, err := Parse([]string{"-h"}, envLookup(nil), &usage); err == nil {
 		t.Fatal("Parse(-h) error = nil, want flag.ErrHelp")
 	}
-	for _, want := range []string{"-listen", "BURSTY_LOCAL_URL", "TRUSTEDROUTER_API_KEY", "BURSTY_TR_CATALOG_URL", "BURSTY_LOCAL_SLOW_AFTER", "BURSTY_BURST_ON_ERROR", "BURSTY_BURST_FALLBACK_MODEL", "BURSTY_ALIASES", "BURSTY_SAVINGS_REFERENCE", "BURSTY_STATE_FILE", "BURSTY_CLOUD", "BURSTY_MAX_CLOUD_SPEND", "BURSTY_SSE_BATCH_WINDOW", "BURSTY_SSE_BATCH_MAX_BYTES", "-no-autodetect", "-version"} {
+	for _, want := range []string{"-listen", "HYBRID_LOCAL_URL", "TRUSTEDROUTER_API_KEY", "HYBRID_TR_CATALOG_URL", "HYBRID_LOCAL_SLOW_AFTER", "HYBRID_BURST_ON_ERROR", "HYBRID_BURST_FALLBACK_MODEL", "HYBRID_PRESET", "HYBRID_BACKUP_MODELS", "HYBRID_ALIASES", "HYBRID_SAVINGS_REFERENCE", "HYBRID_STATE_FILE", "HYBRID_CONFIG_FILE", "HYBRID_CLOUD", "HYBRID_MAX_CLOUD_SPEND", "HYBRID_SSE_BATCH_WINDOW", "HYBRID_SSE_BATCH_MAX_BYTES", "-no-autodetect", "-version"} {
 		if !strings.Contains(usage.String(), want) {
 			t.Fatalf("usage missing %q:\n%s", want, usage.String())
 		}
@@ -137,6 +139,97 @@ func TestValidateRuntime(t *testing.T) {
 	}
 	if err := ValidateRuntime(Config{NoAutodetect: true}); err == nil || !strings.Contains(err.Error(), "remove -no-autodetect") {
 		t.Fatalf("ValidateRuntime(no autodetect) error = %v", err)
+	}
+	if err := ValidateRuntime(Config{
+		LocalURL: "http://local",
+		Preset:   PresetBackupRouter,
+	}); err == nil || !strings.Contains(err.Error(), "TRUSTEDROUTER_API_KEY") {
+		t.Fatalf("ValidateRuntime(backup without key) error = %v", err)
+	}
+}
+
+func TestBackupRouterPreset(t *testing.T) {
+	t.Parallel()
+
+	cfg, err := Parse(
+		[]string{"-preset", "backup-router"},
+		envLookup(map[string]string{envTRAPIKey: "tr-key"}),
+		&bytes.Buffer{},
+	)
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	if cfg.Preset != PresetBackupRouter {
+		t.Fatalf("preset = %q", cfg.Preset)
+	}
+	if got, want := strings.Join(cfg.BackupModels, ","), "moonshotai/kimi-k3,z-ai/glm-5.2"; got != want {
+		t.Fatalf("backup models = %q, want %q", got, want)
+	}
+
+	custom, err := Parse(
+		[]string{
+			"-preset", "backuprouter",
+			"-backup-model", "deepseek/deepseek-v4",
+			"-backup-model", "moonshotai/kimi-k3,z-ai/glm-5.2",
+		},
+		envLookup(map[string]string{
+			envTRAPIKey:     "tr-key",
+			envBackupModels: "ignored/env-model",
+		}),
+		&bytes.Buffer{},
+	)
+	if err != nil {
+		t.Fatalf("Parse(custom) error = %v", err)
+	}
+	if got, want := strings.Join(custom.BackupModels, ","), "deepseek/deepseek-v4,moonshotai/kimi-k3,z-ai/glm-5.2"; got != want {
+		t.Fatalf("custom backup models = %q, want %q", got, want)
+	}
+}
+
+func TestBackupRouterPresetValidation(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		args []string
+		env  map[string]string
+		want string
+	}{
+		{
+			name: "unknown preset",
+			args: []string{"-preset", "mystery"},
+			want: "backuprouter",
+		},
+		{
+			name: "cloud off",
+			args: []string{"-preset", "backuprouter", "-cloud", "off"},
+			env:  map[string]string{envTRAPIKey: "tr-key"},
+			want: "requires -cloud=auto",
+		},
+		{
+			name: "local backup",
+			args: []string{"-backup-model", "local/qwen"},
+			want: "must be a cloud model",
+		},
+		{
+			name: "duplicate backup",
+			args: []string{"-backup-model", "z-ai/glm-5.2,z-ai/glm-5.2"},
+			want: "duplicate backup model",
+		},
+		{
+			name: "empty backup",
+			args: []string{"-backup-model", ""},
+			want: "must not be empty",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			_, err := Parse(tt.args, envLookup(tt.env), &bytes.Buffer{})
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("Parse() error = %v, want containing %q", err, tt.want)
+			}
+		})
 	}
 }
 

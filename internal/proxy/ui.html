@@ -4,47 +4,352 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
-<title>BurstyRouter</title>
+<title>HybridRouter</title>
 <style>
-:root{color-scheme:light;--bg:#f6f7f4;--panel:#fff;--ink:#17201d;--muted:#66736b;--line:#dfe5dd;--local:#0b8f68;--cloud:#3158c9;--warn:#b85f14;--bad:#b63c3c}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}main{width:min(1120px,calc(100% - 32px));margin:24px auto 20px}header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px}h1,h2{margin:0;text-wrap:balance}h1{font-size:22px}h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}.status{min-height:24px;color:var(--muted);font-variant-numeric:tabular-nums}.grid{display:grid;grid-template-columns:1.15fr .85fr;gap:12px}.panel{background:var(--panel);border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,.06),0 12px 32px rgba(23,32,29,.08);padding:16px}.hero{min-height:226px;display:flex;flex-direction:column;justify-content:space-between}.odometer{font-size:clamp(48px,9vw,96px);font-weight:760;letter-spacing:0;font-variant-numeric:tabular-nums;line-height:.98}.meta{color:var(--muted);text-wrap:pretty}.row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px}.num{font-variant-numeric:tabular-nums}.bar,.gauge{height:12px;background:#e7ebe6;border-radius:6px;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(0,0,0,.04)}.bar span,.gauge span{display:block;height:100%;width:0;transition-property:width;transition-duration:.35s;transition-timing-function:cubic-bezier(.2,0,0,1)}.bar span{background:linear-gradient(90deg,var(--local),#35a67f)}.gauge span{background:linear-gradient(90deg,var(--warn),var(--cloud))}.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}.metric strong{display:block;font-size:24px;font-variant-numeric:tabular-nums}.metric small{color:var(--muted)}.feed{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:8px;max-height:430px;overflow:auto}.feed li{display:grid;grid-template-columns:84px 1fr auto;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}.pill{display:inline-flex;align-items:center;justify-content:center;min-height:24px;padding:0 8px;border-radius:6px;font-weight:650;font-size:12px}.local{background:rgba(11,143,104,.12);color:var(--local)}.trustedrouter{background:rgba(49,88,201,.12);color:var(--cloud)}.reason{color:var(--muted)}.path{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bad{color:var(--bad)}footer{margin-top:16px;color:var(--muted);font-size:12px}@media(max-width:820px){main{width:min(100% - 24px,640px);margin-top:16px}.grid,.cards{grid-template-columns:1fr}.odometer{font-size:54px}.feed li{grid-template-columns:76px 1fr}.feed time{display:none}}
+:root{color-scheme:light;--bg:#f4f6f3;--panel:#fff;--panel-soft:#f8faf7;--ink:#15201c;--muted:#617069;--faint:#89948e;--line:#dce3dd;--line-strong:#c7d1c9;--local:#08785a;--cloud:#2e59c7;--cloud-soft:#eef3ff;--gold:#a26018;--bad:#ad3939;--focus:#7190ec;--shadow:0 1px 2px rgba(19,32,26,.05),0 12px 34px rgba(19,32,26,.065)}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit}
+button{color:inherit}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+button:active{scale:.96}
+.shell{width:min(1240px,calc(100% - 32px));margin:0 auto 40px}
+.topbar{height:72px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.brand{display:flex;align-items:center;gap:11px;min-width:0}
+.brand-mark{display:grid;place-items:center;width:34px;height:34px;border-radius:7px;background:var(--ink);color:#fff;font-size:12px;font-weight:800}
+.brand-copy{min-width:0}
+.brand-name{font-size:16px;font-weight:760;line-height:1.2}
+.brand-subtitle{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.connection{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
+.connection-dot{width:8px;height:8px;border-radius:50%;background:var(--local);box-shadow:0 0 0 4px rgba(8,120,90,.1)}
+.connection.error .connection-dot{background:var(--bad);box-shadow:0 0 0 4px rgba(173,57,57,.1)}
+.intro{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:28px;align-items:end;padding:36px 0 28px;border-top:1px solid var(--line)}
+.eyebrow{display:block;margin-bottom:6px;color:var(--muted);font-size:11px;font-weight:760;text-transform:uppercase;letter-spacing:.08em}
+h1,h2,h3,p{margin-top:0}
+h1{margin-bottom:8px;max-width:720px;font-size:34px;line-height:1.15;letter-spacing:0;text-wrap:balance}
+h2{margin-bottom:4px;font-size:19px;line-height:1.3;text-wrap:balance}
+h3{margin-bottom:3px;font-size:15px;line-height:1.35}
+.intro p,.panel-head p{margin-bottom:0;color:var(--muted);text-wrap:pretty}
+.policy-summary{display:grid;grid-template-columns:repeat(3,minmax(92px,auto));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;box-shadow:var(--shadow)}
+.summary-cell{min-height:68px;padding:12px 15px;background:var(--panel);white-space:nowrap}
+.summary-cell strong{display:block;font-size:18px;font-variant-numeric:tabular-nums}
+.summary-cell span{color:var(--muted);font-size:12px}
+.workspace{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;align-items:start}
+.main-column,.side-column{display:grid;gap:16px;min-width:0}
+.panel{min-width:0;padding:22px;background:var(--panel);border:1px solid rgba(199,209,201,.72);border-radius:8px;box-shadow:var(--shadow)}
+.panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:20px}
+.panel-head-copy{min-width:0}
+.panel-head-actions{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.button,.icon-button,.text-button,.profile-button,.model-choice,.model-result{cursor:pointer;transition-property:background-color,border-color,color,box-shadow,scale;transition-duration:.16s;transition-timing-function:cubic-bezier(.2,0,0,1)}
+.button{min-height:42px;padding:0 14px;border:1px solid var(--line-strong);border-radius:6px;background:#fff;font-weight:700}
+.button:hover{background:var(--panel-soft);border-color:#abb8ae}
+.button.primary{border-color:var(--cloud);background:var(--cloud);color:#fff}
+.button.primary:hover{background:#244aad;border-color:#244aad}
+.button:disabled,.icon-button:disabled{cursor:default;opacity:.38}
+.button:disabled:active,.icon-button:disabled:active{scale:1}
+.button.compact{min-height:38px;padding:0 12px}
+.text-button{min-height:40px;padding:0 8px;border:0;background:transparent;color:var(--cloud);font-weight:700}
+.text-button:hover{color:#1f439e}
+.profiles{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin-bottom:24px;padding:5px;background:#edf1ed;border-radius:8px}
+.profile-button{min-height:62px;padding:9px 8px;border:0;border-radius:5px;background:transparent;text-align:left}
+.profile-button:hover{background:rgba(255,255,255,.62)}
+.profile-button[aria-pressed="true"]{background:#fff;box-shadow:0 1px 2px rgba(19,32,26,.1),0 5px 14px rgba(19,32,26,.06)}
+.profile-button strong{display:block;font-size:13px}
+.profile-button span{display:block;margin-top:2px;color:var(--muted);font-size:11px;line-height:1.3}
+.roles{border-top:1px solid var(--line)}
+.role-row{display:grid;grid-template-columns:150px minmax(0,1fr);gap:18px;align-items:center;padding:17px 0;border-bottom:1px solid var(--line)}
+.role-label strong{display:block}
+.role-label span{display:block;margin-top:2px;color:var(--muted);font-size:12px}
+.model-choice{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;width:100%;min-height:66px;padding:10px 12px;border:1px solid var(--line);border-radius:7px;background:var(--panel-soft);text-align:left}
+.model-choice:hover{border-color:#aebbb1;background:#fff;box-shadow:0 4px 14px rgba(19,32,26,.07)}
+.model-title{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:730}
+.model-id{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:12px}
+.model-meta{display:flex;flex-wrap:wrap;gap:5px 12px;margin-top:5px;color:var(--muted);font-size:11px}
+.change-label{color:var(--cloud);font-size:12px;font-weight:750}
+.suggestion{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center;margin-top:16px;padding:12px 14px;border-left:3px solid var(--gold);background:#fff8ee}
+.suggestion strong{display:block;font-size:13px}
+.suggestion span{color:var(--muted);font-size:12px}
+.suggestion[hidden]{display:none}
+.backup-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.backup-item{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:10px;align-items:center;min-height:66px;padding:8px 9px;background:var(--panel-soft);border:1px solid var(--line);border-radius:7px}
+.backup-number{display:grid;place-items:center;width:28px;height:28px;border-radius:5px;background:#e6ebe6;color:var(--muted);font-size:12px;font-weight:800;font-variant-numeric:tabular-nums}
+.backup-copy{min-width:0}
+.backup-actions{display:flex;gap:3px}
+.icon-button{display:grid;place-items:center;width:40px;height:40px;padding:0;border:0;border-radius:6px;background:transparent;font-size:17px}
+.icon-button:hover{background:#e8ede8}
+.empty-state{padding:22px 12px;border:1px dashed var(--line-strong);border-radius:7px;color:var(--muted);text-align:center}
+.backup-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px}
+.backup-limit{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+.client-tabs{display:flex;gap:5px;margin-bottom:14px;padding:5px;background:#edf1ed;border-radius:8px;overflow:auto}
+.client-tab{min-height:40px;padding:0 13px;border:0;border-radius:5px;background:transparent;cursor:pointer;white-space:nowrap;font-size:13px;font-weight:720;transition-property:background-color,box-shadow,scale;transition-duration:.16s}
+.client-tab:hover{background:rgba(255,255,255,.62)}
+.client-tab[aria-pressed="true"]{background:#fff;box-shadow:0 1px 2px rgba(19,32,26,.1),0 4px 12px rgba(19,32,26,.05)}
+.setup-instructions{margin:0 0 12px;padding-left:20px;color:var(--muted);font-size:13px}
+.setup-instructions li+li{margin-top:4px}
+.setup-instructions code{color:var(--ink);font-size:12px}
+.setup-grid{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:end}
+.command{display:block;max-width:100%;min-height:44px;max-height:260px;padding:11px 12px;border-radius:6px;background:#17201d;color:#e8f1ec;overflow:auto;white-space:pre;font:12px/1.65 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+.setup-caveat{margin:10px 0 0;padding:10px 12px;border-left:3px solid var(--gold);background:#fff8ee;color:var(--muted);font-size:12px}
+.setup-caveat[hidden]{display:none}
+.config-message{min-height:21px;margin-top:10px;color:var(--muted);font-size:12px}
+.config-message.success{color:var(--local)}
+.config-message.error{color:var(--bad)}
+.metrics{display:grid;gap:0}
+.metric{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.metric:last-child{border-bottom:0}
+.metric span{color:var(--muted);font-size:13px}
+.metric strong{font-size:15px;font-variant-numeric:tabular-nums;text-align:right}
+.split-bar{height:8px;margin:6px 0 8px;background:#e5eae5;border-radius:4px;overflow:hidden}
+.split-bar span{display:block;width:0;height:100%;background:var(--local);transition-property:width;transition-duration:.35s;transition-timing-function:cubic-bezier(.2,0,0,1)}
+.route-note{padding:14px;background:var(--cloud-soft);border-radius:7px}
+.route-note strong{display:block;font-size:13px}
+.route-note p{margin:4px 0 0;color:var(--muted);font-size:12px;text-wrap:pretty}
+.feed{list-style:none;margin:0;padding:0;display:grid}
+.feed li{display:grid;grid-template-columns:76px minmax(0,1fr) auto;gap:10px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)}
+.feed li:last-child{border-bottom:0}
+.route-badge{display:inline-flex;align-items:center;justify-content:center;min-height:24px;padding:0 7px;border-radius:5px;font-size:11px;font-weight:750}
+.route-badge.local{background:rgba(8,120,90,.1);color:var(--local)}
+.route-badge.trustedrouter{background:rgba(46,89,199,.1);color:var(--cloud)}
+.feed-copy{min-width:0}
+.reason{display:block;color:var(--muted);font-size:12px}
+.path{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
+.feed time{color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}
+.feed .empty-feed{grid-template-columns:1fr;color:var(--muted)}
+.bad{color:var(--bad)!important}
+footer{padding:20px 0;color:var(--muted);font-size:12px;text-align:center}
+dialog{width:min(860px,calc(100% - 28px));height:min(720px,calc(100% - 28px));padding:0;border:0;border-radius:8px;background:var(--panel);box-shadow:0 24px 80px rgba(15,24,20,.28);overflow:hidden}
+dialog::backdrop{background:rgba(18,27,23,.48)}
+.dialog-shell{display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;height:100%}
+.dialog-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:20px 22px 14px;border-bottom:1px solid var(--line)}
+.dialog-head h2{font-size:20px}
+.dialog-head p{margin:2px 0 0;color:var(--muted);font-size:13px}
+.dialog-close{display:grid;place-items:center;width:40px;height:40px;padding:0;border:0;border-radius:6px;background:transparent;font-size:22px;cursor:pointer}
+.dialog-close:hover{background:var(--panel-soft)}
+.picker-tools{display:grid;grid-template-columns:minmax(220px,1fr) auto;gap:10px;padding:14px 22px;border-bottom:1px solid var(--line)}
+.search-wrap{position:relative}
+.search-wrap input{width:100%;height:42px;padding:0 12px;border:1px solid var(--line-strong);border-radius:6px;background:#fff}
+.sort-select{height:42px;padding:0 32px 0 11px;border:1px solid var(--line-strong);border-radius:6px;background:#fff}
+.filters{display:flex;gap:5px;grid-column:1/-1;overflow:auto;padding-bottom:1px}
+.filter-button{min-height:36px;padding:0 10px;border:1px solid var(--line);border-radius:6px;background:#fff;cursor:pointer;white-space:nowrap;font-size:12px;font-weight:680}
+.filter-button:hover{background:var(--panel-soft)}
+.filter-button[aria-pressed="true"]{border-color:#9db1eb;background:var(--cloud-soft);color:#2349aa}
+.model-results{list-style:none;margin:0;padding:8px 14px 16px;overflow:auto}
+.model-results li{margin:0}
+.model-result{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center;width:100%;min-height:78px;padding:12px 10px;border:0;border-bottom:1px solid var(--line);background:#fff;text-align:left}
+.model-result:hover{background:var(--panel-soft)}
+.result-title{display:flex;align-items:baseline;gap:8px;min-width:0}
+.result-title strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.recommended-mark{color:var(--cloud);font-size:11px;font-weight:800;white-space:nowrap}
+.result-side{text-align:right}
+.result-side strong{display:block;font-size:12px;font-variant-numeric:tabular-nums}
+.result-side span{display:block;color:var(--muted);font-size:11px}
+.dialog-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 22px;border-top:1px solid var(--line);background:var(--panel-soft);color:var(--muted);font-size:12px}
+.toast{position:fixed;right:20px;bottom:20px;z-index:10;max-width:min(380px,calc(100% - 40px));padding:11px 14px;border-radius:7px;background:#17201d;color:#fff;box-shadow:0 12px 36px rgba(15,24,20,.22);opacity:0;transform:translateY(8px);pointer-events:none;transition-property:opacity,transform;transition-duration:.2s;transition-timing-function:cubic-bezier(.2,0,0,1)}
+.toast.show{opacity:1;transform:translateY(0)}
+@media(max-width:980px){.workspace{grid-template-columns:1fr}.side-column{grid-template-columns:repeat(2,minmax(0,1fr))}.side-column .panel:last-child{grid-column:1/-1}.profiles{grid-template-columns:repeat(5,minmax(128px,1fr));overflow:auto}.profile-button{min-width:128px}}
+@media(max-width:680px){body{font-size:14px}.shell{width:min(100% - 20px,620px)}.topbar{height:62px}.brand-subtitle{display:none}.connection{font-size:0}.connection::after{content:"Live";font-size:12px}.intro{display:block;padding:24px 0 20px}.intro h1{font-size:27px}.policy-summary{margin-top:18px;grid-template-columns:repeat(3,1fr)}.summary-cell{min-width:0;padding:10px}.summary-cell strong{font-size:15px;overflow:hidden;text-overflow:ellipsis}.workspace{gap:10px}.main-column,.side-column{gap:10px}.side-column{grid-template-columns:1fr}.side-column .panel:last-child{grid-column:auto}.panel{padding:16px}.panel-head{display:block;margin-bottom:16px}.panel-head-actions{margin-top:12px}.panel-head-actions .button{width:100%}.role-row{grid-template-columns:1fr;gap:8px;padding:14px 0}.model-choice{min-height:72px}.suggestion{grid-template-columns:1fr}.suggestion .text-button{justify-self:start;padding-left:0}.backup-item{grid-template-columns:30px minmax(0,1fr)}.backup-actions{grid-column:2;justify-content:flex-end}.setup-grid{grid-template-columns:1fr}.setup-grid .button{width:100%}.feed li{grid-template-columns:70px minmax(0,1fr)}.feed time{display:none}.picker-tools{grid-template-columns:1fr;padding:12px 14px}.dialog-head{padding:16px 14px 12px}.dialog-footer{padding:10px 14px}.sort-select{width:100%}.model-result{grid-template-columns:1fr}.result-side{text-align:left;display:flex;gap:6px}.result-side span::before{content:" / "}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.button,.icon-button,.text-button,.profile-button,.model-choice,.model-result,.client-tab,.split-bar span,.toast{transition-duration:0s}}
 </style>
 </head>
 <body>
-<main>
-<header>
-<div><h1>BurstyRouter</h1><div class="meta">Local-first routing status</div></div>
-<div id="status" class="status" aria-live="polite">Loading...</div>
+<div class="shell">
+<header class="topbar">
+<div class="brand">
+<div class="brand-mark" aria-hidden="true">HR</div>
+<div class="brand-copy"><div class="brand-name">HybridRouter</div><div class="brand-subtitle">Local and TrustedRouter model policy</div></div>
+</div>
+<div id="connection" class="connection"><span class="connection-dot" aria-hidden="true"></span><span id="status">Connecting</span></div>
 </header>
-<section class="grid" aria-label="BurstyRouter status">
-<div class="panel hero">
+<main>
+<section class="intro">
 <div>
-<h2>Saved</h2>
-<div id="savings-odometer" class="odometer">$0.0000</div>
-<div id="savings-meta" class="meta">since process start</div>
+<span class="eyebrow">Routing policy</span>
+<h1>Choose models by job, not by configuration file.</h1>
+<p>Use one model for substantial work, a smaller model for routine tasks, and an ordered recovery chain when either route is unavailable.</p>
 </div>
-<div id="references" class="meta">no priced reference yet</div>
-</div>
-<div class="panel">
-<h2>Local vs cloud</h2>
-<div class="row"><span id="split-counts" class="num">0 local / 0 cloud</span><strong id="split-pct" class="num">0% local</strong></div>
-<div class="bar" aria-hidden="true"><span id="split-local"></span></div>
-<div class="cards">
-<div class="metric"><strong id="inflight" class="num">0/0</strong><small>in flight / capacity</small><div class="gauge"><span id="flight-gauge"></span></div></div>
-<div class="metric"><strong id="cloud-mode">auto</strong><small>cloud mode</small></div>
-<div class="metric"><strong id="cloud-spend" class="num">$0.0000</strong><small>cloud spend</small></div>
-<div class="metric"><strong id="budget-left" class="num">uncapped</strong><small>budget remaining</small></div>
-</div>
-</div>
-<div class="panel" style="grid-column:1/-1">
-<h2>Recent routing decisions</h2>
-<ol id="feed" class="feed"></ol>
+<div class="policy-summary" aria-label="Current policy summary">
+<div class="summary-cell"><strong id="summary-profile">Custom</strong><span>policy</span></div>
+<div class="summary-cell"><strong id="summary-backups" class="num">0</strong><span>backups</span></div>
+<div class="summary-cell"><strong id="summary-catalog" class="num">0</strong><span>chat models</span></div>
 </div>
 </section>
-<footer>READ-ONLY status page.</footer>
+<div class="workspace">
+<div class="main-column">
+<section class="panel" aria-labelledby="policy-heading">
+<div class="panel-head">
+<div class="panel-head-copy"><span class="eyebrow">Client setup</span><h2 id="policy-heading">Model roles</h2><p>Start with a profile, then change any model without losing the rest of the policy.</p></div>
+<div class="panel-head-actions"><button id="save-route" class="button primary" type="button">Save route</button></div>
+</div>
+<div id="profiles" class="profiles" aria-label="Routing profiles"></div>
+<div class="roles">
+<div class="role-row">
+<div class="role-label"><strong>Primary model</strong><span>Used by every connected client</span></div>
+<button id="primary-choice" class="model-choice" type="button" aria-label="Choose primary model"></button>
+</div>
+<div class="role-row">
+<div class="role-label"><strong>Small task model</strong><span>Claude Code search, summaries, and background work</span></div>
+<button id="small-choice" class="model-choice" type="button" aria-label="Choose small task model"></button>
+</div>
+</div>
+<div id="small-suggestion" class="suggestion" hidden>
+<div><strong id="suggestion-title"></strong><span id="suggestion-reason"></span></div>
+<button id="use-suggestion" class="text-button" type="button">Use suggestion</button>
+</div>
+</section>
+<section class="panel" aria-labelledby="backup-heading">
+<div class="panel-head">
+<div class="panel-head-copy"><span class="eyebrow">Recovery</span><h2 id="backup-heading">If the requested model is unavailable</h2><p>HybridRouter tries these models in order. TrustedRouter-managed pools also roll over across their own providers.</p></div>
+<div class="panel-head-actions"><button id="add-backup" class="button compact" type="button">Add model</button></div>
+</div>
+<ol id="backup-list" class="backup-list" aria-label="Ordered TrustedRouter backup models"></ol>
+<div class="backup-footer"><span id="backup-limit" class="backup-limit"></span><button id="reset-profile" class="text-button" type="button">Reset to profile</button></div>
+</section>
+<section class="panel" aria-labelledby="setup-heading">
+<div class="panel-head">
+<div class="panel-head-copy"><span class="eyebrow">Connect a client</span><h2 id="setup-heading">Use this routing policy</h2><p id="setup-description">Choose a client for exact setup instructions.</p></div>
+</div>
+<div id="client-tabs" class="client-tabs" aria-label="Client setup">
+<button class="client-tab" type="button" data-client="claude" aria-pressed="true">Claude Code</button>
+<button class="client-tab" type="button" data-client="codex" aria-pressed="false">Codex CLI</button>
+<button class="client-tab" type="button" data-client="chatgpt" aria-pressed="false">ChatGPT Desktop</button>
+</div>
+<ol id="setup-instructions" class="setup-instructions"></ol>
+<div class="setup-grid"><code id="launch-command" class="command"></code><button id="copy-command" class="button" type="button">Copy command</button></div>
+<p id="setup-caveat" class="setup-caveat" hidden></p>
+<div id="config-message" class="config-message" aria-live="polite"></div>
+</section>
+<section class="panel" aria-labelledby="activity-heading">
+<div class="panel-head"><div class="panel-head-copy"><span class="eyebrow">Live</span><h2 id="activity-heading">Recent routing decisions</h2></div></div>
+<ol id="feed" class="feed"></ol>
+</section>
+</div>
+<aside class="side-column" aria-label="Router status">
+<section class="panel">
+<span class="eyebrow">Today</span><h2>Routing snapshot</h2>
+<div class="metrics">
+<div class="metric"><span>Saved</span><strong id="savings-odometer">$0.0000</strong></div>
+<div class="metric"><span>Local share</span><strong id="split-pct">0%</strong></div>
+<div class="split-bar" aria-hidden="true"><span id="split-local"></span></div>
+<div class="metric"><span>Requests</span><strong id="split-counts">0 local / 0 cloud</strong></div>
+<div class="metric"><span>Local capacity</span><strong id="inflight">0 / 0</strong></div>
+<div class="metric"><span>Cloud spend</span><strong id="cloud-spend">$0.0000</strong></div>
+<div class="metric"><span>Budget remaining</span><strong id="budget-left">Uncapped</strong></div>
+<div class="metric"><span>Cloud policy</span><strong id="cloud-mode">Auto</strong></div>
+</div>
+</section>
+<section class="panel">
+<span class="eyebrow">How it works</span><h2>One policy, two task sizes</h2>
+<div class="route-note"><strong>Primary is universal</strong><p>Claude Code, Codex CLI, and the ChatGPT Desktop Codex workspace use this model.</p></div>
+<div aria-hidden="true" style="height:8px"></div>
+<div class="route-note"><strong>Small is client dependent</strong><p>Claude Code supports a separate small model. Codex currently uses Primary for its model calls.</p></div>
+</section>
+<section class="panel">
+<span class="eyebrow">Pricing reference</span><h2 id="references-heading">No priced requests yet</h2><p id="references" style="margin:7px 0 0;color:var(--muted);font-size:12px;overflow-wrap:anywhere">Pricing appears after routed usage.</p>
+</section>
+</aside>
+</div>
 </main>
+<footer>Settings apply to new requests immediately. Explicit request model lists still take precedence.</footer>
+</div>
+<dialog id="model-dialog" aria-labelledby="picker-heading">
+<div class="dialog-shell">
+<div class="dialog-head">
+<div><h2 id="picker-heading">Choose a model</h2><p id="picker-purpose">Search the live TrustedRouter chat catalog.</p></div>
+<button id="close-picker" class="dialog-close" type="button" aria-label="Close model picker">&times;</button>
+</div>
+<div class="picker-tools">
+<div class="search-wrap"><input id="model-search" type="search" autocomplete="off" placeholder="Search model, provider, or capability" aria-label="Search models"></div>
+<select id="model-sort" class="sort-select" aria-label="Sort models">
+<option value="recommended">Recommended first</option>
+<option value="price">Lowest output price</option>
+<option value="context">Largest context</option>
+<option value="coverage">Most providers</option>
+<option value="name">Name</option>
+</select>
+<div id="model-filters" class="filters" aria-label="Model filters">
+<button class="filter-button" type="button" data-filter="recommended" aria-pressed="true">Recommended</button>
+<button class="filter-button" type="button" data-filter="all" aria-pressed="false">All</button>
+<button class="filter-button" type="button" data-filter="managed" aria-pressed="false">Managed pools</button>
+<button class="filter-button" type="button" data-filter="private" aria-pressed="false">Zero retention+</button>
+<button class="filter-button" type="button" data-filter="open" aria-pressed="false">Open weights</button>
+<button class="filter-button" type="button" data-filter="long" aria-pressed="false">1M context</button>
+<button class="filter-button" type="button" data-filter="cheap" aria-pressed="false">Under $1 / M</button>
+</div>
+</div>
+<ol id="model-results" class="model-results"></ol>
+<div class="dialog-footer"><span id="result-count">0 models</span><span>Prices are input / output per million tokens.</span></div>
+</div>
+</dialog>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script>
-(()=>{"use strict";let token="",asked=false;const $=id=>document.getElementById(id),money=v=>{v=Number(v)||0;return "$"+v.toLocaleString(void 0,{minimumFractionDigits:v<1?4:2,maximumFractionDigits:6})},setText=(id,text)=>{$(id).textContent=text};async function poll(){try{const headers={Accept:"application/json"};if(token)headers.Authorization="Bearer "+token;let res=await fetch("/stats",{headers,cache:"no-store"});if(res.status===401&&!asked){asked=true;const entered=prompt("BurstyRouter token");if(entered){token=entered.trim();return poll()}}if(!res.ok)throw new Error("HTTP "+res.status);render(await res.json());setText("status","updated "+new Date().toLocaleTimeString())}catch(err){setText("status",err.message||String(err))}}function render(s){const savings=s.savings||{},routes=s.routes||{},local=Number(routes.local)||0,cloud=Number(routes.trustedrouter)||0,total=local+cloud,pct=total?local/total*100:0;setText("savings-odometer",money(savings.saved_usd));setText("savings-meta",savings.since?"since "+new Date(savings.since).toLocaleString():"since process start");const refs=savings.references||{},refText=Object.keys(refs).sort().map(k=>k+" x"+refs[k]).join(", ");setText("references",refText||"no priced reference yet");setText("split-counts",local+" local / "+cloud+" cloud");setText("split-pct",pct.toFixed(total?1:0)+"% local");$("split-local").style.width=Math.max(0,Math.min(100,pct))+"%";const inflight=Number(s.in_flight_local)||0,cap=Number(s.local_capacity)||0,used=cap?Math.min(100,inflight/cap*100):0;setText("inflight",inflight+"/"+cap);$("flight-gauge").style.width=used+"%";setText("cloud-mode",s.cloud_mode||"auto");setText("cloud-spend",money(savings.cloud_spend_usd));setText("budget-left",s.cloud_budget_remaining_usd===void 0?"uncapped":money(s.cloud_budget_remaining_usd));renderFeed(s.recent||[])}function renderFeed(items){const feed=$("feed");feed.replaceChildren();items.slice(0,20).forEach(d=>{const li=document.createElement("li"),pill=document.createElement("span"),mid=document.createElement("span"),time=document.createElement("time");pill.className="pill "+(d.route||"");pill.textContent=d.route==="trustedrouter"?"cloud":d.route||"route";mid.textContent="";const reason=document.createElement("span"),path=document.createElement("div");reason.className="reason";reason.textContent=(d.reason||"policy")+" - "+(d.status||0);path.className="path";path.textContent=d.path||"";mid.append(reason,path);time.className=Number(d.status)>=400?"bad":"num";time.textContent=d.at?new Date(d.at).toLocaleTimeString():"";li.append(pill,mid,time);feed.append(li)});if(!feed.children.length){const li=document.createElement("li");li.textContent="No routed requests yet";feed.append(li)}}poll();setInterval(poll,2000)})();
+(()=>{"use strict";
+let token="",asked=false,backups=[],catalog=[],profiles=[],maxBackups=16,primaryModel="",smallModel="",activeProfile="custom",setupClient="claude",pickerTarget=null,activeFilter="recommended",toastTimer=0,dirty=false;
+const preferenceKey="hybridrouter.claude-models.v2";
+const $=id=>document.getElementById(id);
+const setText=(id,text)=>{$(id).textContent=text};
+const money=value=>{value=Number(value)||0;return "$"+value.toLocaleString(void 0,{minimumFractionDigits:value<1?4:2,maximumFractionDigits:6})};
+const price=micro=>{micro=Number(micro)||0;const usd=micro/1e6;if(usd===0)return "Free";return "$"+usd.toLocaleString(void 0,{minimumFractionDigits:usd<.01?3:2,maximumFractionDigits:usd<1?3:2})};
+const compact=value=>{value=Number(value)||0;if(value>=1e6)return (value/1e6).toLocaleString(void 0,{maximumFractionDigits:1})+"M";if(value>=1e3)return Math.round(value/1e3)+"K";return String(value||"Unknown")};
+const modelMap=()=>new Map(catalog.map(model=>[model.id,model]));
+function modelInfo(id){return modelMap().get(id)||{id,name:id||"Choose a model",provider:(id||"").split("/")[0]||"unknown",context_length:0,input_price_microdollars_per_million:0,output_price_microdollars_per_million:0,privacy_tier:0,privacy_label:"",route_kind:"",open_weights:false,provider_count:0,managed:false}}
+function exists(id){return modelMap().has(id)}
+async function api(path,options={}){const headers=new Headers(options.headers||{});headers.set("Accept","application/json");if(token)headers.set("Authorization","Bearer "+token);const response=await fetch(path,{...options,headers,cache:"no-store"});if(response.status===401&&!asked){asked=true;const entered=prompt("HybridRouter token");if(entered){token=entered.trim();return api(path,options)}}let payload=null;try{payload=await response.json()}catch{}if(!response.ok){const message=payload&&payload.error&&payload.error.message;throw new Error(message||"HTTP "+response.status)}return payload}
+async function poll(){try{renderStats(await api("/stats"));$("connection").classList.remove("error");setText("status","Updated "+new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}))}catch(error){$("connection").classList.add("error");setText("status",error.message||String(error))}}
+function renderStats(stats){const savings=stats.savings||{},routes=stats.routes||{},local=Number(routes.local)||0,cloud=Number(routes.trustedrouter)||0,total=local+cloud,pct=total?local/total*100:0;setText("savings-odometer",money(savings.saved_usd));setText("split-counts",local+" local / "+cloud+" cloud");setText("split-pct",pct.toFixed(total?1:0)+"%");$("split-local").style.width=Math.max(0,Math.min(100,pct))+"%";setText("inflight",(Number(stats.in_flight_local)||0)+" / "+(Number(stats.local_capacity)||0));setText("cloud-mode",titleCase(stats.cloud_mode||"auto"));setText("cloud-spend",money(savings.cloud_spend_usd));setText("budget-left",stats.cloud_budget_remaining_usd===void 0?"Uncapped":money(stats.cloud_budget_remaining_usd));const refs=savings.references||{},entries=Object.keys(refs).sort().map(key=>key+" x"+refs[key]);setText("references-heading",entries.length?"Reference models":"No priced requests yet");setText("references",entries.join(", ")||"Pricing appears after routed usage.");renderFeed(stats.recent||[])}
+function renderFeed(items){const feed=$("feed");feed.replaceChildren();items.slice(0,12).forEach(item=>{const li=document.createElement("li"),badge=document.createElement("span"),copy=document.createElement("span"),reason=document.createElement("span"),path=document.createElement("span"),time=document.createElement("time");badge.className="route-badge "+(item.route||"");badge.textContent=item.route==="trustedrouter"?"Cloud":titleCase(item.route||"Route");copy.className="feed-copy";reason.className="reason";reason.textContent=(item.reason||"policy")+" / "+(item.status||0);path.className="path";path.textContent=item.path||"";copy.append(reason,path);time.className=Number(item.status)>=400?"bad":"";time.textContent=item.at?new Date(item.at).toLocaleTimeString():"";li.append(badge,copy,time);feed.append(li)});if(!feed.children.length){const li=document.createElement("li");li.className="empty-feed";li.textContent="No routed requests yet.";feed.append(li)}}
+async function loadConfig(){try{const config=await api("/config/backups");backups=(config.backup_models||[]).slice();catalog=(config.models||[]).slice();if(!catalog.length)catalog=(config.available_models||[]).map(id=>({id,name:id}));profiles=(config.profiles||[]).slice();maxBackups=Number(config.max_backup_models)||16;loadPreferences();chooseDefaults();detectProfile();renderAll();message(config.catalog_error?"The live catalog is unavailable. Your current recovery chain is still active.":config.persistence_enabled?"Recovery changes persist across restarts.":"Recovery changes remain active until HybridRouter restarts.",config.catalog_error?"error":"");dirty=false}catch(error){message(error.message||String(error),"error")}}
+function loadPreferences(){try{const saved=JSON.parse(localStorage.getItem(preferenceKey)||"{}");primaryModel=typeof saved.primary_model==="string"?saved.primary_model:"";smallModel=typeof saved.small_model==="string"?saved.small_model:"";activeProfile=typeof saved.profile==="string"?saved.profile:"custom";setupClient=["claude","codex","chatgpt"].includes(saved.client)?saved.client:"claude"}catch{primaryModel="";smallModel="";activeProfile="custom";setupClient="claude"}}
+function chooseDefaults(){const balanced=profiles.find(profile=>profile.id==="balanced")||profiles[0];if(!exists(primaryModel))primaryModel=balanced&&exists(balanced.primary_model)?balanced.primary_model:firstExisting(["trustedrouter/auto","moonshotai/kimi-k3","z-ai/glm-5.2"]);if(!exists(smallModel))smallModel=balanced&&exists(balanced.small_model)?balanced.small_model:firstExisting(["trustedrouter/fast","trustedrouter/cheap",primaryModel])}
+function firstExisting(ids){return ids.find(exists)||catalog[0]&&catalog[0].id||""}
+function renderAll(){renderProfiles();renderChoice("primary-choice",primaryModel);renderChoice("small-choice",smallModel);renderSuggestion();renderBackups();updateCommand();updateSummary()}
+function renderProfiles(){const root=$("profiles");root.replaceChildren();profiles.forEach(profile=>{const button=document.createElement("button"),strong=document.createElement("strong"),span=document.createElement("span");button.type="button";button.className="profile-button";button.dataset.profile=profile.id;button.title=profile.description||profile.name;button.setAttribute("aria-pressed",String(activeProfile===profile.id));strong.textContent=profile.name;span.textContent=profile.id==="balanced"?"Recommended":profile.id==="fast"?"Lowest latency":profile.id==="economy"?"Lowest cost":profile.id==="zdr"?"Provider ZDR":"Confidential compute";button.append(strong,span);button.addEventListener("click",()=>applyProfile(profile));root.append(button)})}
+function renderChoice(elementID,id){const root=$(elementID),model=modelInfo(id),copy=document.createElement("span"),title=document.createElement("span"),identifier=document.createElement("span"),meta=document.createElement("span"),change=document.createElement("span");root.replaceChildren();copy.style.minWidth="0";title.className="model-title";title.textContent=model.name||model.id;identifier.className="model-id";identifier.textContent=model.id;meta.className="model-meta";modelMeta(model).forEach(text=>{const item=document.createElement("span");item.textContent=text;meta.append(item)});copy.append(title,identifier,meta);change.className="change-label";change.textContent="Change";root.append(copy,change)}
+function modelMeta(model){const values=[];if(model.managed)values.push("Managed route");else if(model.provider)values.push(titleCase(model.provider));if(model.context_length)values.push(compact(model.context_length)+" context");if(model.privacy_label)values.push(model.privacy_label);if(model.provider_count>1)values.push(model.provider_count+" providers");return values}
+function renderSuggestion(){const suggestion=recommendSmallModel();if(!suggestion||suggestion.id===smallModel){$("small-suggestion").hidden=true;return}const model=modelInfo(suggestion.id);setText("suggestion-title","Suggested small model: "+model.name);setText("suggestion-reason",suggestion.reason);$("small-suggestion").hidden=false;$("use-suggestion").dataset.model=suggestion.id}
+function recommendSmallModel(){if(primaryModel==="trustedrouter/e2e"||primaryModel==="trustedrouter/confidential")return {id:firstExisting(["trustedrouter/e2e",primaryModel]),reason:"It preserves confidential-compute routing for routine tasks."};if(primaryModel==="trustedrouter/zdr")return {id:firstExisting(["trustedrouter/zdr",primaryModel]),reason:"It keeps the same zero-retention policy for routine tasks."};if(activeProfile==="economy")return {id:firstExisting(["trustedrouter/cheap",primaryModel]),reason:"The managed cheap pool minimizes routine-task cost."};return {id:firstExisting(["trustedrouter/fast","deepseek/deepseek-v4-flash","trustedrouter/cheap",primaryModel]),reason:"The managed fast pool is optimized for interactive work and can roll over providers."}}
+function renderBackups(){const list=$("backup-list");list.replaceChildren();backups.forEach((id,index)=>{const model=modelInfo(id),item=document.createElement("li"),number=document.createElement("span"),copy=document.createElement("span"),title=document.createElement("span"),identifier=document.createElement("span"),actions=document.createElement("span"),change=iconButton("Change","Change model"),up=iconButton("&#8593;","Move up"),down=iconButton("&#8595;","Move down"),remove=iconButton("&times;","Remove");item.className="backup-item";number.className="backup-number";number.textContent=String(index+1);copy.className="backup-copy";title.className="model-title";title.textContent=model.name||model.id;identifier.className="model-id";identifier.textContent=model.id;copy.append(title,identifier);actions.className="backup-actions";change.addEventListener("click",()=>openPicker({kind:"backup",index}));up.disabled=index===0;down.disabled=index===backups.length-1;up.addEventListener("click",()=>moveBackup(index,-1));down.addEventListener("click",()=>moveBackup(index,1));remove.addEventListener("click",()=>{backups.splice(index,1);markCustom();renderAll()});actions.append(change,up,down,remove);item.append(number,copy,actions);list.append(item)});if(!backups.length){const empty=document.createElement("li");empty.className="empty-state";empty.textContent="No additional model fallback. Managed routes can still roll over across their provider pool.";list.append(empty)}$("add-backup").disabled=backups.length>=maxBackups;setText("backup-limit",backups.length+" of "+maxBackups+" recovery models")}
+function iconButton(content,label){const button=document.createElement("button");button.type="button";button.className="icon-button";button.title=label;button.setAttribute("aria-label",label);if(content==="Change"){button.textContent="...";button.style.fontWeight="800"}else{const span=document.createElement("span");span.setAttribute("aria-hidden","true");span.innerHTML=content;button.append(span)}return button}
+function moveBackup(index,offset){const next=index+offset;if(next<0||next>=backups.length)return;[backups[index],backups[next]]=[backups[next],backups[index]];markCustom();renderAll()}
+function applyProfile(profile){activeProfile=profile.id;primaryModel=profile.primary_model;smallModel=profile.small_model;backups=(profile.backup_models||[]).slice();dirty=true;renderAll();toast(profile.name+" profile applied. Save to activate the recovery chain.")}
+function resetProfile(){const profile=profiles.find(item=>item.id===activeProfile)||profiles.find(item=>item.id==="balanced")||profiles[0];if(profile)applyProfile(profile)}
+function markCustom(){activeProfile="custom";dirty=true}
+function detectProfile(){const match=profiles.find(profile=>profile.primary_model===primaryModel&&profile.small_model===smallModel&&sameList(profile.backup_models||[],backups));activeProfile=match?match.id:"custom"}
+function sameList(a,b){return a.length===b.length&&a.every((value,index)=>value===b[index])}
+function updateSummary(){const profile=profiles.find(item=>item.id===activeProfile);setText("summary-profile",profile?profile.name:"Custom");setText("summary-backups",String(backups.length));setText("summary-catalog",String(catalog.length));$("save-route").disabled=!dirty}
+async function saveRoute(){message("Saving recovery chain...","");try{const config=await api("/config/backups",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({backup_models:backups.map(value=>value.trim())})});backups=(config.backup_models||[]).slice();savePreferences();dirty=false;renderAll();message(config.persistence_enabled?"Saved. Choose a client below to copy its setup.":"Active until restart. Choose a client below to copy its setup.","success");toast("Routing policy saved.")}catch(error){message(error.message||String(error),"error")}}
+function savePreferences(){localStorage.setItem(preferenceKey,JSON.stringify({primary_model:primaryModel,small_model:smallModel,profile:activeProfile,client:setupClient}))}
+function message(text,kind){const node=$("config-message");node.textContent=text;node.className="config-message"+(kind?" "+kind:"")}
+function codexConfig(){return "model = "+tomlQuote(primaryModel)+"\nmodel_provider = \"hybridrouter\"\n\n[model_providers.hybridrouter]\nname = \"HybridRouter\"\nbase_url = \"http://127.0.0.1:8383/v1\"\nenv_key = \"HYBRID_TOKEN\"\nwire_api = \"responses\""}
+function updateCommand(){document.querySelectorAll(".client-tab").forEach(button=>button.setAttribute("aria-pressed",String(button.dataset.client===setupClient)));const instructions=$("setup-instructions"),caveat=$("setup-caveat");instructions.replaceChildren();let snippet="",description="",steps=[],copyLabel="Copy command",warning="";if(setupClient==="claude"){description="Claude Code supports both the Primary and Small task model roles.";steps=["Run this command in the shell where you start Claude Code.","The saved recovery list is added to generation requests automatically."];snippet="ANTHROPIC_BASE_URL='http://127.0.0.1:8383' ANTHROPIC_AUTH_TOKEN=\"${HYBRID_TOKEN:-hybridrouter-local}\" ANTHROPIC_MODEL="+shellQuote(primaryModel)+" ANTHROPIC_SMALL_FAST_MODEL="+shellQuote(smallModel)+" claude"}else{description=setupClient==="codex"?"Codex uses HybridRouter through its custom Responses API provider.":"The Codex workspace in ChatGPT Desktop shares the same provider configuration as Codex CLI.";steps=setupClient==="codex"?["Add this block to ~/.codex/config.toml.","Run: export HYBRID_TOKEN=\"${HYBRID_TOKEN:-hybridrouter-local}\" && codex"]:["Open Settings, Configuration, then Open config.toml.","Add this block, then run: launchctl setenv HYBRID_TOKEN \"${HYBRID_TOKEN:-hybridrouter-local}\"","Restart ChatGPT Desktop."];snippet=codexConfig();copyLabel="Copy config";if(setupClient==="chatgpt")warning="This config applies to the Codex workspace in ChatGPT Desktop. Ordinary ChatGPT conversations cannot replace OpenAI's model provider with a local endpoint."}setText("setup-description",description);steps.forEach(text=>{const item=document.createElement("li");item.textContent=text;instructions.append(item)});setText("launch-command",snippet);setText("copy-command",copyLabel);caveat.textContent=warning;caveat.hidden=!warning;return snippet}
+function shellQuote(value){return "'"+String(value).replaceAll("'","'\\''")+"'"}
+function tomlQuote(value){return "\""+String(value).replaceAll("\\","\\\\").replaceAll("\"","\\\"")+"\""}
+async function copyCommand(){const command=updateCommand();try{await navigator.clipboard.writeText(command);toast((setupClient==="claude"?"Command":"Config")+" copied.");message(setupClient==="claude"?"Command copied. Run it in a terminal to start Claude Code with this policy.":"Provider config copied. Add it to your user-level ~/.codex/config.toml.","success")}catch{message("Clipboard access was blocked. Select and copy the setup above.","error")}}
+function openPicker(target){pickerTarget=target;activeFilter="recommended";$("model-search").value="";$("model-sort").value="recommended";setFilter("recommended");setText("picker-purpose",target.kind==="primary"?"Choose the model for substantial work.":target.kind==="small"?"Choose the fast, economical model for Claude Code routine tasks.":"Choose the next model in the recovery chain.");renderResults();$("model-dialog").showModal();setTimeout(()=>$("model-search").focus(),0)}
+function setFilter(filter){activeFilter=filter;document.querySelectorAll(".filter-button").forEach(button=>button.setAttribute("aria-pressed",String(button.dataset.filter===filter)))}
+function renderResults(){const query=$("model-search").value.trim().toLowerCase(),sort=$("model-sort").value,recommended=recommendedIDs(),results=catalog.filter(model=>{const text=[model.id,model.name,model.provider,model.privacy_label,model.route_kind].join(" ").toLowerCase();if(query&&!text.includes(query))return false;if(activeFilter==="recommended"&&!recommended.has(model.id))return false;if(activeFilter==="managed"&&!model.managed)return false;if(activeFilter==="private"&&Number(model.privacy_tier)<2)return false;if(activeFilter==="open"&&!model.open_weights)return false;if(activeFilter==="long"&&Number(model.context_length)<1e6)return false;if(activeFilter==="cheap"&&Number(model.output_price_microdollars_per_million)>1e6)return false;return true});results.sort((a,b)=>compareModels(a,b,sort,recommended));const root=$("model-results");root.replaceChildren();results.slice(0,150).forEach(model=>{const li=document.createElement("li"),button=document.createElement("button"),copy=document.createElement("span"),title=document.createElement("span"),strong=document.createElement("strong"),mark=document.createElement("span"),identifier=document.createElement("span"),meta=document.createElement("span"),side=document.createElement("span"),prices=document.createElement("strong"),context=document.createElement("span");button.type="button";button.className="model-result";button.dataset.model=model.id;copy.style.minWidth="0";title.className="result-title";strong.textContent=model.name||model.id;title.append(strong);if(recommended.has(model.id)){mark.className="recommended-mark";mark.textContent=recommendationLabel(model.id);title.append(mark)}identifier.className="model-id";identifier.textContent=model.id;meta.className="model-meta";modelMeta(model).forEach(value=>{const item=document.createElement("span");item.textContent=value;meta.append(item)});copy.append(title,identifier,meta);side.className="result-side";prices.textContent=price(model.input_price_microdollars_per_million)+" / "+price(model.output_price_microdollars_per_million);context.textContent=compact(model.context_length)+" context";side.append(prices,context);button.append(copy,side);button.addEventListener("click",()=>selectModel(model.id));li.append(button);root.append(li)});if(!root.children.length){const empty=document.createElement("li");empty.className="empty-state";empty.textContent="No chat models match these filters.";root.append(empty)}setText("result-count",results.length+" model"+(results.length===1?"":"s"))}
+function compareModels(a,b,sort,recommended){if(sort==="price"){const aPrice=a.output_price_microdollars_per_million===void 0?Number.MAX_SAFE_INTEGER:Number(a.output_price_microdollars_per_million),bPrice=b.output_price_microdollars_per_million===void 0?Number.MAX_SAFE_INTEGER:Number(b.output_price_microdollars_per_million);return aPrice-bPrice||a.id.localeCompare(b.id)}if(sort==="context")return Number(b.context_length)-Number(a.context_length)||a.id.localeCompare(b.id);if(sort==="coverage")return Number(b.provider_count)-Number(a.provider_count)||a.id.localeCompare(b.id);if(sort==="name")return (a.name||a.id).localeCompare(b.name||b.id);return recommendationRank(a.id)-recommendationRank(b.id)||(recommended.has(b.id)?1:0)-(recommended.has(a.id)?1:0)||a.id.localeCompare(b.id)}
+function recommendedIDs(){const ids=new Set(["trustedrouter/auto","trustedrouter/fast","trustedrouter/cheap","trustedrouter/zdr","trustedrouter/e2e","deepseek/deepseek-v4-flash","moonshotai/kimi-k3","z-ai/glm-5.2","openai/gpt-oss-120b"]);profiles.forEach(profile=>{ids.add(profile.primary_model);ids.add(profile.small_model);(profile.backup_models||[]).forEach(id=>ids.add(id))});return ids}
+function recommendationRank(id){const role=pickerTarget&&pickerTarget.kind||"backup",order=role==="small"?["trustedrouter/fast","trustedrouter/cheap","deepseek/deepseek-v4-flash","trustedrouter/zdr","trustedrouter/e2e","openai/gpt-oss-120b"]:role==="primary"?["trustedrouter/auto","trustedrouter/fast","trustedrouter/zdr","trustedrouter/e2e","moonshotai/kimi-k3","z-ai/glm-5.2"]:["moonshotai/kimi-k3","z-ai/glm-5.2","trustedrouter/auto","deepseek/deepseek-v4-flash","trustedrouter/e2e"];const index=order.indexOf(id);return index<0?1000:index}
+function recommendationLabel(id){if(id==="trustedrouter/auto")return "Balanced";if(id==="trustedrouter/fast")return "Fast";if(id==="trustedrouter/cheap")return "Low cost";if(id==="trustedrouter/zdr")return "Zero retention";if(id==="trustedrouter/e2e")return "E2E";return "Recommended"}
+function selectModel(id){if(!pickerTarget)return;if(pickerTarget.kind==="primary")primaryModel=id;else if(pickerTarget.kind==="small")smallModel=id;else if(pickerTarget.index===backups.length)backups.push(id);else backups[pickerTarget.index]=id;markCustom();$("model-dialog").close();renderAll()}
+function titleCase(value){value=String(value||"");return value?value.charAt(0).toUpperCase()+value.slice(1):""}
+function toast(text){const node=$("toast");clearTimeout(toastTimer);node.textContent=text;node.classList.add("show");toastTimer=setTimeout(()=>node.classList.remove("show"),2600)}
+$("primary-choice").addEventListener("click",()=>openPicker({kind:"primary"}));
+$("small-choice").addEventListener("click",()=>openPicker({kind:"small"}));
+$("use-suggestion").addEventListener("click",event=>{smallModel=event.currentTarget.dataset.model;markCustom();renderAll()});
+$("add-backup").addEventListener("click",()=>{if(backups.length<maxBackups)openPicker({kind:"backup",index:backups.length})});
+$("reset-profile").addEventListener("click",resetProfile);
+$("save-route").addEventListener("click",saveRoute);
+$("copy-command").addEventListener("click",copyCommand);
+$("client-tabs").addEventListener("click",event=>{const button=event.target.closest(".client-tab");if(!button)return;setupClient=button.dataset.client;savePreferences();updateCommand()});
+$("close-picker").addEventListener("click",()=>$("model-dialog").close());
+$("model-dialog").addEventListener("click",event=>{if(event.target===$("model-dialog"))$("model-dialog").close()});
+$("model-search").addEventListener("input",event=>{if(event.currentTarget.value.trim()&&activeFilter==="recommended")setFilter("all");renderResults()});
+$("model-sort").addEventListener("change",renderResults);
+$("model-filters").addEventListener("click",event=>{const button=event.target.closest(".filter-button");if(!button)return;setFilter(button.dataset.filter);renderResults()});
+poll();loadConfig();setInterval(poll,3000);
+})();
 </script>
 </body>
 </html>

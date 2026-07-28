@@ -17,10 +17,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Lore-Hex/BurstyRouter/internal/anthropic"
-	"github.com/Lore-Hex/BurstyRouter/internal/config"
-	"github.com/Lore-Hex/BurstyRouter/internal/policy"
-	"github.com/Lore-Hex/BurstyRouter/internal/upstream"
+	"github.com/Lore-Hex/HybridRouter/internal/anthropic"
+	"github.com/Lore-Hex/HybridRouter/internal/config"
+	"github.com/Lore-Hex/HybridRouter/internal/policy"
+	"github.com/Lore-Hex/HybridRouter/internal/upstream"
 	trustedrouter "github.com/Lore-Hex/trusted-router-go"
 )
 
@@ -71,7 +71,7 @@ type SavingsTotals struct {
 	HasHistory         bool
 }
 
-// Server is the BurstyRouter HTTP proxy.
+// Server is the HybridRouter HTTP proxy.
 type Server struct {
 	cfg            config.Config
 	local          *upstream.Local
@@ -82,6 +82,7 @@ type Server struct {
 	catalog        *http.Client
 	savings        *savingsMeter
 	cloud          *cloudControl
+	runtime        runtimeSettings
 	warmRetryDelay time.Duration
 	logStop        chan struct{}
 	logDone        chan struct{}
@@ -157,7 +158,7 @@ func (s *Server) WarmPricingCatalog() {
 			time.Sleep(s.warmRetryDelay)
 			continue
 		}
-		log.Printf("bursty savings: pricing catalog warm failed: %v", err)
+		log.Printf("hybridrouter savings: pricing catalog warm failed: %v", err)
 	}
 }
 
@@ -185,10 +186,14 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.URL.Path == "/ui" {
+		s.handleUI(w, r)
+		return
+	}
+	if r.URL.Path == backupConfigPath {
 		if !s.authorized(w, r) {
 			return
 		}
-		s.handleUI(w, r)
+		s.handleBackupConfig(w, r)
 		return
 	}
 	if strings.HasPrefix(r.URL.Path, "/v1/") {
@@ -227,6 +232,8 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 		"ok":            true,
 		"local":         s.local != nil,
 		"trustedrouter": s.tr != nil,
+		"preset":        s.cfg.Preset,
+		"backup_models": s.currentBackupModels(),
 	})
 }
 
@@ -292,6 +299,17 @@ func (s *Server) handleMessages(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeAnthropicRoutedError(w, s.defaultRoute(), policy.ReasonPolicy, http.StatusBadRequest, err.Error(), "invalid_request_error")
 		return
+	}
+	raw, movedSystemMessages, err := normalizeAnthropicSystemMessages(raw)
+	if err != nil {
+		writeAnthropicRoutedError(w, s.defaultRoute(), policy.ReasonPolicy, http.StatusBadRequest, err.Error(), "invalid_request_error")
+		return
+	}
+	if movedSystemMessages > 0 {
+		log.Printf("hybridrouter anthropic: normalized inline system messages count=%d", movedSystemMessages)
+	}
+	if roles := unsupportedAnthropicMessageRoles(raw); len(roles) > 0 {
+		log.Printf("hybridrouter anthropic: unsupported message roles=%q", roles)
 	}
 	decision, err := policy.Decide(raw, s.local != nil, s.tr != nil, policy.Options{
 		Aliases:            s.cfg.Aliases,
@@ -654,7 +672,7 @@ func (s *Server) serveLocalMessagesResponse(w http.ResponseWriter, r *http.Reque
 		}
 		usage, err := anthropic.TranslateStream(resp.Body, flushWriter{w: w, flusher: flusher}, decision.View.Model)
 		if err != nil {
-			log.Printf("bursty anthropic: local stream translation failed: %v", err)
+			log.Printf("hybridrouter anthropic: local stream translation failed: %v", err)
 		}
 		s.recordAnthropicLocalUsage(r.Context(), decision, usage, true)
 		return
@@ -727,7 +745,16 @@ func (s *Server) serveTrustedRouterRaw(w http.ResponseWriter, r *http.Request, p
 		writeRoutedError(w, policy.RouteLocal, reason, http.StatusTooManyRequests, "local_overloaded", "TrustedRouter is not configured", "rate_limit_error")
 		return
 	}
-	resp, err := s.tr.RawPost(r.Context(), path, body, r.Header)
+	cloudBody := body
+	if endpointSupportsModelFallback(endpoint) {
+		var err error
+		cloudBody, err = policy.AddFallbackModels(body, s.currentBackupModels())
+		if err != nil {
+			writeRoutedError(w, policy.RouteTrustedRouter, reason, http.StatusBadRequest, "invalid_request_body", err.Error(), "invalid_request_error")
+			return
+		}
+	}
+	resp, err := s.tr.RawPost(r.Context(), path, cloudBody, r.Header)
 	if err != nil {
 		if passthroughEndpointNotFound(endpoint, err) {
 			writePassthroughUnsupported(w, r.URL.Path, reason)
@@ -910,7 +937,7 @@ func (s *Server) logSavingsSummary() {
 		return
 	}
 	saved, cloudSpend, ref := s.savings.Totals()
-	log.Printf("bursty savings: served %.0f%% locally, saved $%s (ref: %s), cloud spend $%s", s.stats.localShare()*100, formatUSDLog(saved), ref, formatUSDLog(cloudSpend))
+	log.Printf("hybridrouter savings: served %.0f%% locally, saved $%s (ref: %s), cloud spend $%s", s.stats.localShare()*100, formatUSDLog(saved), ref, formatUSDLog(cloudSpend))
 }
 
 func (s *Server) acquireLocalSlot(ctx context.Context) localSlotResult {
@@ -1053,7 +1080,7 @@ func (s *Server) serveUpstreamResponse(w http.ResponseWriter, r *http.Request, r
 			s.logCloudCompletion(reason, decision, capture, record)
 		}
 		if len(bytes.TrimSpace(body)) > 0 {
-			injected, err := injectBurstyBlock(body, route, reason)
+			injected, err := injectHybridBlock(body, route, reason)
 			if err == nil {
 				body = injected
 				w.Header().Del("Content-Encoding")
@@ -1133,8 +1160,8 @@ type savingsHeaderWriter struct {
 func (w *savingsHeaderWriter) WriteHeader(status int) {
 	if !w.wrote {
 		w.wrote = true
-		if w.savings != nil && w.Header().Get("X-Bursty-Route") != "" {
-			w.Header().Set("X-Bursty-Saved-USD", w.savings.SavedUSDHeader())
+		if w.savings != nil && w.Header().Get("X-Hybrid-Route") != "" {
+			w.Header().Set("X-Hybrid-Saved-USD", w.savings.SavedUSDHeader())
 		}
 	}
 	w.ResponseWriter.WriteHeader(status)
@@ -1156,7 +1183,7 @@ func (w *savingsHeaderWriter) Flush() {
 	}
 }
 
-func injectBurstyBlock(body []byte, route policy.Route, reason policy.Reason) ([]byte, error) {
+func injectHybridBlock(body []byte, route policy.Route, reason policy.Reason) ([]byte, error) {
 	payload, err := json.Marshal(map[string]string{
 		"route":  string(route),
 		"reason": string(reason),
@@ -1164,7 +1191,7 @@ func injectBurstyBlock(body []byte, route policy.Route, reason policy.Reason) ([
 	if err != nil {
 		return nil, err
 	}
-	return policy.InjectTopLevelObject(body, "bursty", payload)
+	return policy.InjectTopLevelObject(body, "hybrid", payload)
 }
 
 func (s *Server) recordResponseUsage(ctx context.Context, route policy.Route, decision policy.Decision, capture usageCapture, streaming bool) savingsRecord {
@@ -1196,10 +1223,10 @@ func (s *Server) logCloudCompletion(reason policy.Reason, decision policy.Decisi
 	promptTokens := capture.Usage.PromptTokens
 	completionTokens := capture.Usage.CompletionTokens
 	if record.Priced {
-		log.Printf("bursty cloud: reason=%s model=%s prompt_toks=%d completion_toks=%d est_cost=$%s", reason, model, promptTokens, completionTokens, formatUSDBurst(record.CostMicro))
+		log.Printf("hybridrouter cloud: reason=%s model=%s prompt_toks=%d completion_toks=%d est_cost=$%s", reason, model, promptTokens, completionTokens, formatUSDBurst(record.CostMicro))
 		return
 	}
-	log.Printf("bursty cloud: reason=%s model=%s prompt_toks=%d completion_toks=%d", reason, model, promptTokens, completionTokens)
+	log.Printf("hybridrouter cloud: reason=%s model=%s prompt_toks=%d completion_toks=%d", reason, model, promptTokens, completionTokens)
 }
 
 func (s *Server) authorized(w http.ResponseWriter, r *http.Request) bool {
@@ -1462,7 +1489,7 @@ func logSlowFirstByteReadCloser(body io.ReadCloser, timeout time.Duration, model
 		select {
 		case <-wrapped.done:
 		default:
-			log.Printf("bursty local: forced local first byte exceeded %s for model=%s; waiting for local", timeout, model)
+			log.Printf("hybridrouter local: forced local first byte exceeded %s for model=%s; waiting for local", timeout, model)
 		}
 	})
 	return wrapped
@@ -1501,8 +1528,8 @@ func isJSONResponse(header http.Header) bool {
 }
 
 func setRouteHeaders(w http.ResponseWriter, route policy.Route, reason policy.Reason) {
-	w.Header().Set("X-Bursty-Route", string(route))
-	w.Header().Set("X-Bursty-Reason", string(reason))
+	w.Header().Set("X-Hybrid-Route", string(route))
+	w.Header().Set("X-Hybrid-Reason", string(reason))
 }
 
 func writeRoutedError(w http.ResponseWriter, route policy.Route, reason policy.Reason, status int, code, message, typ string) {
@@ -1540,7 +1567,7 @@ func writeError(w http.ResponseWriter, status int, code, message, typ string) {
 			"code":    code,
 			"message": message,
 			"type":    typ,
-			"source":  "bursty",
+			"source":  "hybrid",
 		},
 	})
 }
@@ -1557,10 +1584,20 @@ func messagesShouldUseCloudPassthrough(decision policy.Decision) bool {
 
 func cloudClaudeModelID(model string) bool {
 	model = strings.ToLower(strings.TrimSpace(model))
-	if model == "" || strings.HasPrefix(model, "local/") || !strings.Contains(model, "/") {
+	if model == "" || strings.HasPrefix(model, "local/") {
 		return false
 	}
-	return strings.Contains(model, "claude")
+	return strings.HasPrefix(model, "claude-") ||
+		(strings.HasPrefix(model, "anthropic/") && strings.Contains(model, "claude"))
+}
+
+func endpointSupportsModelFallback(endpoint endpointFamily) bool {
+	switch endpoint {
+	case endpointChatCompletions, endpointMessages, endpointResponses:
+		return true
+	default:
+		return false
+	}
 }
 
 func writeJSON(w http.ResponseWriter, status int, value any) {
@@ -1816,7 +1853,7 @@ func aliasModels(aliases map[string]string) []map[string]any {
 		out = append(out, map[string]any{
 			"id":       key,
 			"object":   "model",
-			"owned_by": "bursty-alias",
+			"owned_by": "hybridrouter-alias",
 			"metadata": map[string]any{
 				"local_target": aliases[key],
 			},

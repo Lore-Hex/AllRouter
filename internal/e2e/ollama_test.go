@@ -13,13 +13,13 @@ import (
 )
 
 func TestRealOllamaLocalModel(t *testing.T) {
-	ollamaURL := strings.TrimRight(strings.TrimSpace(os.Getenv("BURSTY_E2E_OLLAMA_URL")), "/")
+	ollamaURL := strings.TrimRight(strings.TrimSpace(os.Getenv("HYBRID_E2E_OLLAMA_URL")), "/")
 	if ollamaURL == "" {
-		t.Skip("BURSTY_E2E_OLLAMA_URL is unset")
+		t.Skip("HYBRID_E2E_OLLAMA_URL is unset")
 	}
 	model := firstOllamaModel(t, ollamaURL)
 
-	proc := startBursty(t, burstyConfig{localURL: ollamaURL})
+	proc := startHybrid(t, hybridConfig{localURL: ollamaURL})
 
 	chatBody := mustJSON(t, map[string]any{
 		"model":      model,
@@ -34,7 +34,7 @@ func TestRealOllamaLocalModel(t *testing.T) {
 		t.Fatalf("non-streaming status = %d body=%s", resp.StatusCode, body)
 	}
 	assertRoute(t, resp, "local", "policy")
-	assertBurstyBlock(t, body, "local", "policy")
+	assertHybridBlock(t, body, "local", "policy")
 	var completion struct {
 		Choices []struct {
 			Message struct {
@@ -144,9 +144,9 @@ func TestRealOllamaLocalModel(t *testing.T) {
 }
 
 func TestRealOllamaSlowFirstByteHedges(t *testing.T) {
-	ollamaURL := strings.TrimRight(strings.TrimSpace(os.Getenv("BURSTY_E2E_OLLAMA_URL")), "/")
+	ollamaURL := strings.TrimRight(strings.TrimSpace(os.Getenv("HYBRID_E2E_OLLAMA_URL")), "/")
 	if ollamaURL == "" {
-		t.Skip("BURSTY_E2E_OLLAMA_URL is unset")
+		t.Skip("HYBRID_E2E_OLLAMA_URL is unset")
 	}
 	model := firstOllamaModel(t, ollamaURL)
 
@@ -158,7 +158,7 @@ func TestRealOllamaSlowFirstByteHedges(t *testing.T) {
 	}))
 	defer tr.Close()
 
-	proc := startBursty(t, burstyConfig{
+	proc := startHybrid(t, hybridConfig{
 		localURL:       ollamaURL,
 		trAPIKey:       "e2e-tr-key",
 		trBaseURL:      tr.URL + "/v1",

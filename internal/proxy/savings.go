@@ -115,9 +115,9 @@ func (m *savingsMeter) load() {
 	data, err := os.ReadFile(m.file)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			log.Printf("bursty savings: state file %s missing; starting fresh", m.file)
+			log.Printf("hybridrouter savings: state file %s missing; starting fresh", m.file)
 		} else {
-			log.Printf("bursty savings: read state file %s failed: %v; starting fresh", m.file, err)
+			log.Printf("hybridrouter savings: read state file %s failed: %v; starting fresh", m.file, err)
 		}
 		m.state = fresh
 		m.currentSavedMicro.Store(0)
@@ -125,7 +125,7 @@ func (m *savingsMeter) load() {
 	}
 	var loaded persistedSavingsState
 	if err := json.Unmarshal(data, &loaded); err != nil {
-		log.Printf("bursty savings: state file %s is corrupt: %v; starting fresh", m.file, err)
+		log.Printf("hybridrouter savings: state file %s is corrupt: %v; starting fresh", m.file, err)
 		m.state = fresh
 		m.currentSavedMicro.Store(0)
 		return
@@ -149,11 +149,11 @@ func (m *savingsMeter) flushLoop() {
 		select {
 		case <-ticker.C:
 			if err := m.FlushIfDirty(); err != nil {
-				log.Printf("bursty savings: write state file %s failed: %v", m.file, err)
+				log.Printf("hybridrouter savings: write state file %s failed: %v", m.file, err)
 			}
 		case <-m.stop:
 			if err := m.FlushIfDirty(); err != nil {
-				log.Printf("bursty savings: write state file %s failed: %v", m.file, err)
+				log.Printf("hybridrouter savings: write state file %s failed: %v", m.file, err)
 			}
 			return
 		}

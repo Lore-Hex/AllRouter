@@ -1,4 +1,4 @@
-module github.com/Lore-Hex/BurstyRouter
+module github.com/Lore-Hex/HybridRouter
 
 go 1.23
 

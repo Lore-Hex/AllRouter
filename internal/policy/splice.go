@@ -9,11 +9,11 @@ import (
 )
 
 // isRewrittenKey reports whether key (already lowercased) is a top-level key
-// BurstyRouter reads for routing or rewrites in the forwarded body, and so must
+// HybridRouter reads for routing or rewrites in the forwarded body, and so must
 // appear at most once in canonical lowercase form.
 func isRewrittenKey(key string) bool {
 	switch key {
-	case "model", "provider", "max_tokens", "max_completion_tokens", "max_output_tokens", "stream", "stream_options":
+	case "model", "models", "provider", "max_tokens", "max_completion_tokens", "max_output_tokens", "stream", "stream_options":
 		return true
 	default:
 		return false
@@ -129,6 +129,54 @@ func InjectTopLevelObject(raw []byte, key string, objectValue []byte) ([]byte, e
 	return out, nil
 }
 
+// AddFallbackModels adds an ordered TrustedRouter models array without
+// replacing a caller-supplied models directive. The primary model remains
+// first because TrustedRouter evaluates model followed by models in order.
+func AddFallbackModels(raw []byte, fallbacks []string) ([]byte, error) {
+	if len(fallbacks) == 0 {
+		return append([]byte(nil), raw...), nil
+	}
+	if _, present, err := topLevelRawValue(raw, "models"); err != nil {
+		return nil, err
+	} else if present {
+		return append([]byte(nil), raw...), nil
+	}
+
+	modelRaw, present, err := topLevelRawValue(raw, "model")
+	if err != nil {
+		return nil, err
+	}
+	if !present {
+		return append([]byte(nil), raw...), nil
+	}
+	var primary string
+	if err := json.Unmarshal(modelRaw, &primary); err != nil {
+		return nil, fmt.Errorf("decode primary model: %w", err)
+	}
+
+	seen := map[string]struct{}{strings.TrimSpace(primary): {}}
+	models := make([]string, 0, len(fallbacks))
+	for _, fallback := range fallbacks {
+		fallback = strings.TrimSpace(fallback)
+		if fallback == "" {
+			continue
+		}
+		if _, exists := seen[fallback]; exists {
+			continue
+		}
+		seen[fallback] = struct{}{}
+		models = append(models, fallback)
+	}
+	if len(models) == 0 {
+		return append([]byte(nil), raw...), nil
+	}
+	encoded, err := json.Marshal(models)
+	if err != nil {
+		return nil, err
+	}
+	return InjectTopLevelObject(raw, "models", encoded)
+}
+
 // topLevelRawValue returns the raw JSON bytes of a top-level member's value and
 // whether the key is present. Nested keys with the same name are ignored.
 func topLevelRawValue(raw []byte, key string) ([]byte, bool, error) {
@@ -177,7 +225,7 @@ func scanTopLevelObject(raw []byte) (objectScan, error) {
 		if err := json.Unmarshal(raw[i:keyEnd], &key); err != nil {
 			return objectScan{}, err
 		}
-		// For the top-level keys BurstyRouter reads or rewrites, require exactly one
+		// For the top-level keys HybridRouter reads or rewrites, require exactly one
 		// occurrence in canonical lowercase form. encoding/json matches struct
 		// fields case-insensitively and takes the last duplicate, whereas our raw
 		// splicing is exact-case and takes the first — so a non-canonical-case or

@@ -17,30 +17,51 @@ import (
 )
 
 const (
-	envListen              = "BURSTY_LISTEN"
-	envLocalURL            = "BURSTY_LOCAL_URL"
+	envListen              = "HYBRID_LISTEN"
+	envLocalURL            = "HYBRID_LOCAL_URL"
 	envTRAPIKey            = "TRUSTEDROUTER_API_KEY"
-	envTRBaseURL           = "BURSTY_TR_BASE_URL"
-	envTRCatalogURL        = "BURSTY_TR_CATALOG_URL"
-	envLocalMaxConcurrency = "BURSTY_LOCAL_MAX_CONCURRENCY"
-	envLocalQueueWait      = "BURSTY_LOCAL_QUEUE_WAIT"
-	envLocalSlowAfter      = "BURSTY_LOCAL_SLOW_AFTER"
-	envBurstOnError        = "BURSTY_BURST_ON_ERROR"
-	envBurstFallbackModel  = "BURSTY_BURST_FALLBACK_MODEL"
-	envToken               = "BURSTY_TOKEN"
-	envAliases             = "BURSTY_ALIASES"
-	envSavingsReference    = "BURSTY_SAVINGS_REFERENCE"
-	envStateFile           = "BURSTY_STATE_FILE"
-	envCloud               = "BURSTY_CLOUD"
-	envMaxCloudSpend       = "BURSTY_MAX_CLOUD_SPEND"
-	envSSEBatchWindow      = "BURSTY_SSE_BATCH_WINDOW"
-	envSSEBatchMaxBytes    = "BURSTY_SSE_BATCH_MAX_BYTES"
+	envTRBaseURL           = "HYBRID_TR_BASE_URL"
+	envTRCatalogURL        = "HYBRID_TR_CATALOG_URL"
+	envLocalMaxConcurrency = "HYBRID_LOCAL_MAX_CONCURRENCY"
+	envLocalQueueWait      = "HYBRID_LOCAL_QUEUE_WAIT"
+	envLocalSlowAfter      = "HYBRID_LOCAL_SLOW_AFTER"
+	envBurstOnError        = "HYBRID_BURST_ON_ERROR"
+	envBurstFallbackModel  = "HYBRID_BURST_FALLBACK_MODEL"
+	envPreset              = "HYBRID_PRESET"
+	envBackupModels        = "HYBRID_BACKUP_MODELS"
+	envToken               = "HYBRID_TOKEN"
+	envAliases             = "HYBRID_ALIASES"
+	envSavingsReference    = "HYBRID_SAVINGS_REFERENCE"
+	envStateFile           = "HYBRID_STATE_FILE"
+	envConfigFile          = "HYBRID_CONFIG_FILE"
+	envCloud               = "HYBRID_CLOUD"
+	envMaxCloudSpend       = "HYBRID_MAX_CLOUD_SPEND"
+	envSSEBatchWindow      = "HYBRID_SSE_BATCH_WINDOW"
+	envSSEBatchMaxBytes    = "HYBRID_SSE_BATCH_MAX_BYTES"
 )
 
 // DefaultTRCatalogURL is the public TrustedRouter control-plane catalog base URL.
 const DefaultTRCatalogURL = "https://trustedrouter.com/v1"
 
-// CloudMode controls when BurstyRouter may send traffic to the cloud upstream.
+// Preset enables a coherent routing policy without hiding its controls.
+type Preset string
+
+const (
+	PresetNone         Preset = ""
+	PresetBackupRouter Preset = "backuprouter"
+)
+
+// defaultBackupModels follow the Claude model requested by Claude Code when
+// BackupRouter mode is enabled.
+var defaultBackupModels = []string{
+	"moonshotai/kimi-k3",
+	"z-ai/glm-5.2",
+}
+
+// MaxBackupModels bounds the configured failover chain and its request size.
+const MaxBackupModels = 16
+
+// CloudMode controls when HybridRouter may send traffic to the cloud upstream.
 type CloudMode string
 
 const (
@@ -49,28 +70,32 @@ const (
 	CloudOff      CloudMode = "off"
 )
 
-// Config is the complete runtime configuration for a BurstyRouter process.
+// Config is the complete runtime configuration for a HybridRouter process.
 type Config struct {
-	Listen              string
-	LocalURL            string
-	TRAPIKey            string
-	TRBaseURL           string
-	TRCatalogURL        string
-	LocalMaxConcurrency int
-	LocalQueueWait      time.Duration
-	LocalSlowAfter      time.Duration
-	BurstOnError        bool
-	BurstFallbackModel  string
-	Token               string
-	Aliases             map[string]string
-	SavingsReference    string
-	StateFile           string
-	Cloud               CloudMode
-	MaxCloudSpendMicro  int64
-	SSEBatchWindow      time.Duration
-	SSEBatchMaxBytes    int
-	NoAutodetect        bool
-	PrintVersion        bool
+	Listen               string
+	LocalURL             string
+	TRAPIKey             string
+	TRBaseURL            string
+	TRCatalogURL         string
+	LocalMaxConcurrency  int
+	LocalQueueWait       time.Duration
+	LocalSlowAfter       time.Duration
+	BurstOnError         bool
+	BurstFallbackModel   string
+	Preset               Preset
+	BackupModels         []string
+	Token                string
+	Aliases              map[string]string
+	SavingsReference     string
+	StateFile            string
+	ConfigFile           string
+	Cloud                CloudMode
+	MaxCloudSpendMicro   int64
+	SSEBatchWindow       time.Duration
+	SSEBatchMaxBytes     int
+	NoAutodetect         bool
+	PrintVersion         bool
+	backupModelsExplicit bool
 }
 
 // HasLocal reports whether local upstream routing is configured.
@@ -91,7 +116,7 @@ func Parse(args []string, lookupEnv func(string) (string, bool), output io.Write
 		return Config{}, err
 	}
 
-	fs := flag.NewFlagSet("burstyrouter", flag.ContinueOnError)
+	fs := flag.NewFlagSet("hybridrouter", flag.ContinueOnError)
 	fs.SetOutput(output)
 	fs.StringVar(&cfg.Listen, "listen", cfg.Listen, "bind address")
 	fs.StringVar(&cfg.LocalURL, "local-url", cfg.LocalURL, "local OpenAI-compatible base URL")
@@ -103,10 +128,13 @@ func Parse(args []string, lookupEnv func(string) (string, bool), output io.Write
 	fs.DurationVar(&cfg.LocalSlowAfter, "local-slow-after", cfg.LocalSlowAfter, "burst when local response body does not produce its first byte within this duration; 0 disables")
 	fs.BoolVar(&cfg.BurstOnError, "burst-on-error", cfg.BurstOnError, "burst to TrustedRouter on local connect error/timeout/429/5xx/404-model")
 	fs.StringVar(&cfg.BurstFallbackModel, "burst-fallback-model", cfg.BurstFallbackModel, "TrustedRouter model to use when bursting an unmapped local-native model")
+	fs.Var(presetValue{value: &cfg.Preset}, "preset", "routing preset: backuprouter")
+	fs.Var(&modelListValue{values: &cfg.BackupModels, explicit: &cfg.backupModelsExplicit}, "backup-model", "TrustedRouter fallback model after the requested model; repeatable")
 	fs.StringVar(&cfg.Token, "token", cfg.Token, "optional inbound bearer token")
 	fs.Var(aliasMapValue{values: cfg.Aliases}, "alias", "model alias CLOUD-id=LOCAL-model; repeatable")
 	fs.StringVar(&cfg.SavingsReference, "savings-reference", cfg.SavingsReference, "TrustedRouter model id used as the counterfactual savings price when no alias/request price applies")
 	fs.StringVar(&cfg.StateFile, "state-file", cfg.StateFile, "state file path; empty disables persistence")
+	fs.StringVar(&cfg.ConfigFile, "config-file", cfg.ConfigFile, "runtime config file path; empty disables UI persistence")
 	fs.Var(cloudModeValue{value: &cfg.Cloud}, "cloud", "cloud egress mode: auto, explicit, or off")
 	fs.Var(usdMicroValue{value: &cfg.MaxCloudSpendMicro}, "max-cloud-spend", "maximum cloud spend in USD per UTC day; 0 disables the cap")
 	fs.DurationVar(&cfg.SSEBatchWindow, "sse-batch-window", cfg.SSEBatchWindow, "coalesce streamed chat SSE content chunks within this window to cut egress bytes (useful when exposed over ngrok/WAN); 0 disables")
@@ -114,33 +142,46 @@ func Parse(args []string, lookupEnv func(string) (string, bool), output io.Write
 	fs.BoolVar(&cfg.NoAutodetect, "no-autodetect", cfg.NoAutodetect, "disable local server autodetection when -local-url is unset")
 	fs.BoolVar(&cfg.PrintVersion, "version", cfg.PrintVersion, "print version and exit")
 	fs.Usage = func() {
-		fmt.Fprintln(output, "Usage: burstyrouter [flags]")
+		fmt.Fprintln(output, "Usage: hybridrouter [flags]")
 		fmt.Fprintln(output)
 		fmt.Fprintln(output, "Flags:")
-		fmt.Fprintln(output, "  -listen                    env BURSTY_LISTEN                  default :8383")
-		fmt.Fprintln(output, "  -local-url                 env BURSTY_LOCAL_URL               default \"\"")
+		fmt.Fprintln(output, "  -listen                    env HYBRID_LISTEN                  default :8383")
+		fmt.Fprintln(output, "  -local-url                 env HYBRID_LOCAL_URL               default \"\"")
 		fmt.Fprintln(output, "  -tr-api-key                env TRUSTEDROUTER_API_KEY          default \"\"")
-		fmt.Fprintf(output, "  -tr-base-url               env BURSTY_TR_BASE_URL             default %s\n", trustedrouter.DefaultAPIBaseURL)
-		fmt.Fprintf(output, "  -tr-catalog-url            env BURSTY_TR_CATALOG_URL          default %s\n", DefaultTRCatalogURL)
-		fmt.Fprintln(output, "  -local-max-concurrency     env BURSTY_LOCAL_MAX_CONCURRENCY   default 4")
-		fmt.Fprintln(output, "  -local-queue-wait          env BURSTY_LOCAL_QUEUE_WAIT        default 0s")
-		fmt.Fprintln(output, "  -local-slow-after          env BURSTY_LOCAL_SLOW_AFTER        default 0s")
-		fmt.Fprintln(output, "  -burst-on-error            env BURSTY_BURST_ON_ERROR          default true")
-		fmt.Fprintln(output, "  -burst-fallback-model      env BURSTY_BURST_FALLBACK_MODEL    default \"\"")
-		fmt.Fprintln(output, "  -token                     env BURSTY_TOKEN                   default \"\"")
-		fmt.Fprintln(output, "  -alias                     env BURSTY_ALIASES                 default \"\"")
-		fmt.Fprintln(output, "  -savings-reference         env BURSTY_SAVINGS_REFERENCE       default \"\"")
-		fmt.Fprintln(output, "  -state-file                env BURSTY_STATE_FILE              default $XDG_STATE_HOME/bursty/state.json or ~/.bursty/state.json")
-		fmt.Fprintln(output, "  -cloud                     env BURSTY_CLOUD                   default auto")
-		fmt.Fprintln(output, "  -max-cloud-spend           env BURSTY_MAX_CLOUD_SPEND         default 0")
-		fmt.Fprintln(output, "  -sse-batch-window          env BURSTY_SSE_BATCH_WINDOW        default 0s")
-		fmt.Fprintln(output, "  -sse-batch-max-bytes       env BURSTY_SSE_BATCH_MAX_BYTES     default 4096")
+		fmt.Fprintf(output, "  -tr-base-url               env HYBRID_TR_BASE_URL             default %s\n", trustedrouter.DefaultAPIBaseURL)
+		fmt.Fprintf(output, "  -tr-catalog-url            env HYBRID_TR_CATALOG_URL          default %s\n", DefaultTRCatalogURL)
+		fmt.Fprintln(output, "  -local-max-concurrency     env HYBRID_LOCAL_MAX_CONCURRENCY   default 4")
+		fmt.Fprintln(output, "  -local-queue-wait          env HYBRID_LOCAL_QUEUE_WAIT        default 0s")
+		fmt.Fprintln(output, "  -local-slow-after          env HYBRID_LOCAL_SLOW_AFTER        default 0s")
+		fmt.Fprintln(output, "  -burst-on-error            env HYBRID_BURST_ON_ERROR          default true")
+		fmt.Fprintln(output, "  -burst-fallback-model      env HYBRID_BURST_FALLBACK_MODEL    default \"\"")
+		fmt.Fprintln(output, "  -preset                    env HYBRID_PRESET                  default \"\"")
+		fmt.Fprintln(output, "  -backup-model              env HYBRID_BACKUP_MODELS           repeatable; BackupRouter defaults to Kimi K3, GLM 5.2")
+		fmt.Fprintln(output, "  -token                     env HYBRID_TOKEN                   default \"\"")
+		fmt.Fprintln(output, "  -alias                     env HYBRID_ALIASES                 default \"\"")
+		fmt.Fprintln(output, "  -savings-reference         env HYBRID_SAVINGS_REFERENCE       default \"\"")
+		fmt.Fprintln(output, "  -state-file                env HYBRID_STATE_FILE              default $XDG_STATE_HOME/hybridrouter/state.json or ~/.hybridrouter/state.json")
+		fmt.Fprintln(output, "  -config-file               env HYBRID_CONFIG_FILE             default $XDG_CONFIG_HOME/hybridrouter/config.json or ~/.config/hybridrouter/config.json")
+		fmt.Fprintln(output, "  -cloud                     env HYBRID_CLOUD                   default auto")
+		fmt.Fprintln(output, "  -max-cloud-spend           env HYBRID_MAX_CLOUD_SPEND         default 0")
+		fmt.Fprintln(output, "  -sse-batch-window          env HYBRID_SSE_BATCH_WINDOW        default 0s")
+		fmt.Fprintln(output, "  -sse-batch-max-bytes       env HYBRID_SSE_BATCH_MAX_BYTES     default 4096")
 		fmt.Fprintln(output, "  -no-autodetect             env none                           default false")
 		fmt.Fprintln(output, "  -version                   env none                           default false")
 	}
 	if err := fs.Parse(args); err != nil {
 		return Config{}, err
 	}
+	if cfg.Preset == PresetBackupRouter && !cfg.backupModelsExplicit {
+		models, found, err := LoadRuntimeConfig(cfg.ConfigFile)
+		if err != nil {
+			return Config{}, fmt.Errorf("-config-file: %w", err)
+		}
+		if found {
+			cfg.BackupModels = models
+		}
+	}
+	applyPreset(&cfg)
 	if err := validate(cfg); err != nil {
 		return Config{}, err
 	}
@@ -157,6 +198,7 @@ func defaultsFromEnv(lookupEnv func(string) (string, bool)) (Config, error) {
 		BurstOnError:        true,
 		Aliases:             map[string]string{},
 		StateFile:           defaultStateFile(lookupEnv),
+		ConfigFile:          defaultConfigFile(lookupEnv),
 		Cloud:               CloudAuto,
 		SSEBatchMaxBytes:    4096,
 	}
@@ -221,6 +263,21 @@ func defaultsFromEnv(lookupEnv func(string) (string, bool)) (Config, error) {
 	if value, ok := lookupEnv(envBurstFallbackModel); ok {
 		cfg.BurstFallbackModel = value
 	}
+	if value, ok := lookupEnv(envPreset); ok {
+		if err := parsePreset(value, &cfg.Preset); err != nil {
+			return Config{}, fmt.Errorf("%s: %w", envPreset, err)
+		}
+	}
+	if value, ok := lookupEnv(envBackupModels); ok {
+		if strings.TrimSpace(value) != "" {
+			models, err := parseModelList(value)
+			if err != nil {
+				return Config{}, fmt.Errorf("%s: %w", envBackupModels, err)
+			}
+			cfg.BackupModels = models
+			cfg.backupModelsExplicit = true
+		}
+	}
 	if value, ok := lookupEnv(envToken); ok {
 		cfg.Token = value
 	}
@@ -234,6 +291,9 @@ func defaultsFromEnv(lookupEnv func(string) (string, bool)) (Config, error) {
 	}
 	if value, ok := lookupEnv(envStateFile); ok {
 		cfg.StateFile = value
+	}
+	if value, ok := lookupEnv(envConfigFile); ok {
+		cfg.ConfigFile = value
 	}
 	if value, ok := lookupEnv(envCloud); ok {
 		if err := parseCloudMode(value, &cfg.Cloud); err != nil {
@@ -273,12 +333,24 @@ func validate(cfg Config) error {
 	if cfg.SSEBatchWindow < 0 {
 		return errors.New("-sse-batch-window must not be negative")
 	}
+	if err := validatePreset(cfg.Preset); err != nil {
+		return err
+	}
+	if err := validateBackupModels(cfg.BackupModels); err != nil {
+		return err
+	}
+	if cfg.Preset == PresetBackupRouter && cfg.Cloud != CloudAuto {
+		return errors.New("-preset=backuprouter requires -cloud=auto")
+	}
 	return nil
 }
 
 // ValidateRuntime verifies the final startup configuration after local
 // autodetection has had a chance to populate LocalURL.
 func ValidateRuntime(cfg Config) error {
+	if cfg.Preset == PresetBackupRouter && !cfg.HasTrustedRouter() {
+		return errors.New("-preset=backuprouter requires TRUSTEDROUTER_API_KEY or -tr-api-key")
+	}
 	if strings.TrimSpace(cfg.LocalURL) != "" || strings.TrimSpace(cfg.TRAPIKey) != "" {
 		return nil
 	}
@@ -290,15 +362,146 @@ func ValidateRuntime(cfg Config) error {
 
 func defaultStateFile(lookupEnv func(string) (string, bool)) string {
 	if stateHome, ok := lookupEnv("XDG_STATE_HOME"); ok && strings.TrimSpace(stateHome) != "" {
-		return filepath.Join(stateHome, "bursty", "state.json")
+		return filepath.Join(stateHome, "hybridrouter", "state.json")
 	}
 	if home, ok := lookupEnv("HOME"); ok && strings.TrimSpace(home) != "" {
-		return filepath.Join(home, ".bursty", "state.json")
+		return filepath.Join(home, ".hybridrouter", "state.json")
 	}
 	if home, err := os.UserHomeDir(); err == nil && strings.TrimSpace(home) != "" {
-		return filepath.Join(home, ".bursty", "state.json")
+		return filepath.Join(home, ".hybridrouter", "state.json")
 	}
 	return ""
+}
+
+func defaultConfigFile(lookupEnv func(string) (string, bool)) string {
+	if configHome, ok := lookupEnv("XDG_CONFIG_HOME"); ok && strings.TrimSpace(configHome) != "" {
+		return filepath.Join(configHome, "hybridrouter", "config.json")
+	}
+	if home, ok := lookupEnv("HOME"); ok && strings.TrimSpace(home) != "" {
+		return filepath.Join(home, ".config", "hybridrouter", "config.json")
+	}
+	return ""
+}
+
+func applyPreset(cfg *Config) {
+	if cfg.Preset == PresetBackupRouter && len(cfg.BackupModels) == 0 {
+		cfg.BackupModels = append([]string(nil), defaultBackupModels...)
+	}
+}
+
+type presetValue struct {
+	value *Preset
+}
+
+func (v presetValue) String() string {
+	if v.value == nil {
+		return ""
+	}
+	return string(*v.value)
+}
+
+func (v presetValue) Set(value string) error {
+	return parsePreset(value, v.value)
+}
+
+func parsePreset(value string, dst *Preset) error {
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	switch normalized {
+	case "", "none":
+		*dst = PresetNone
+	case "backuprouter", "backup-router", "backup":
+		*dst = PresetBackupRouter
+	default:
+		return errors.New("-preset must be backuprouter")
+	}
+	return nil
+}
+
+func validatePreset(preset Preset) error {
+	switch preset {
+	case PresetNone, PresetBackupRouter:
+		return nil
+	default:
+		return errors.New("-preset must be backuprouter")
+	}
+}
+
+type modelListValue struct {
+	values   *[]string
+	explicit *bool
+	seen     bool
+}
+
+func (v *modelListValue) String() string {
+	if v == nil || v.values == nil {
+		return ""
+	}
+	return strings.Join(*v.values, ",")
+}
+
+func (v *modelListValue) Set(value string) error {
+	models, err := parseModelList(value)
+	if err != nil {
+		return err
+	}
+	if !v.seen {
+		*v.values = nil
+		v.seen = true
+	}
+	if v.explicit != nil {
+		*v.explicit = true
+	}
+	*v.values = append(*v.values, models...)
+	return validateBackupModels(*v.values)
+}
+
+func parseModelList(value string) ([]string, error) {
+	parts := strings.Split(value, ",")
+	models := make([]string, 0, len(parts))
+	for _, part := range parts {
+		model := strings.TrimSpace(part)
+		if model == "" {
+			return nil, errors.New("backup model must not be empty")
+		}
+		models = append(models, model)
+	}
+	if err := validateBackupModels(models); err != nil {
+		return nil, err
+	}
+	return models, nil
+}
+
+func validateBackupModels(models []string) error {
+	if len(models) > MaxBackupModels {
+		return fmt.Errorf("at most %d backup models are allowed", MaxBackupModels)
+	}
+	seen := make(map[string]struct{}, len(models))
+	for _, model := range models {
+		model = strings.TrimSpace(model)
+		if model == "" {
+			return errors.New("backup model must not be empty")
+		}
+		if strings.HasPrefix(strings.ToLower(model), "local/") {
+			return fmt.Errorf("backup model %q must be a cloud model", model)
+		}
+		if _, exists := seen[model]; exists {
+			return fmt.Errorf("duplicate backup model %q", model)
+		}
+		seen[model] = struct{}{}
+	}
+	return nil
+}
+
+// NormalizeBackupModels trims and validates an ordered runtime fallback list.
+func NormalizeBackupModels(models []string) ([]string, error) {
+	normalized := make([]string, len(models))
+	for index, model := range models {
+		normalized[index] = strings.TrimSpace(model)
+	}
+	if err := validateBackupModels(normalized); err != nil {
+		return nil, err
+	}
+	return normalized, nil
 }
 
 type aliasMapValue struct {

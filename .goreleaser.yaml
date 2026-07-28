@@ -1,11 +1,11 @@
 version: 2
 
-project_name: burstyrouter
+project_name: hybridrouter
 
 builds:
-  - id: burstyrouter
-    main: ./cmd/burstyrouter
-    binary: burstyrouter
+  - id: hybridrouter
+    main: ./cmd/hybridrouter
+    binary: hybridrouter
     env:
       - CGO_ENABLED=0
     goos:
@@ -24,7 +24,7 @@ builds:
 archives:
   - id: default
     builds:
-      - burstyrouter
+      - hybridrouter
     formats:
       - tar.gz
     format_overrides:
@@ -39,19 +39,19 @@ checksum:
   name_template: checksums.txt
 
 brews:
-  - name: burstyrouter
+  - name: hybridrouter
     repository:
       owner: Lore-Hex
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     directory: Formula
-    homepage: https://github.com/Lore-Hex/BurstyRouter
-    description: Local-first OpenAI-compatible proxy with TrustedRouter bursting
+    homepage: https://github.com/Lore-Hex/HybridRouter
+    description: Hybrid local and cloud LLM router with Claude Code backup
     license: Elastic-2.0
     install: |
-      bin.install "burstyrouter"
+      bin.install "hybridrouter"
     test: |
-      system "#{bin}/burstyrouter", "-version"
+      system "#{bin}/hybridrouter", "-version"
 
 changelog:
   use: github

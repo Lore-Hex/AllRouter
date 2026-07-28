@@ -22,7 +22,7 @@ import (
 // Deltas carrying reasoning/reasoning_content, tool_calls, or anything else are
 // still relayed untouched, so no thinking trace or tool call is ever merged away.
 //
-// It cuts egress bytes over a WAN link (e.g. when BurstyRouter is exposed via
+// It cuts egress bytes over a WAN link (e.g. when HybridRouter is exposed via
 // ngrok): each OpenAI chunk spends ~150-250 bytes of JSON/SSE framing on a few
 // bytes of content, and merging consecutive content deltas amortizes that
 // framing. The first content event always passes through immediately so
