@@ -3,6 +3,7 @@ package proxy
 import (
 	"context"
 	"encoding/json"
+	"math"
 	"strconv"
 	"strings"
 
@@ -116,23 +117,62 @@ func priceMicroPerToken(pricing map[string]any, entry map[string]any, tokenPrice
 	return 0, false
 }
 
+// usableTokenPrice rejects a per-token price that cannot be spent against.
+//
+// Prices arrive from the model catalog over HTTP, so they are untrusted input.
+// strconv.ParseFloat accepts "NaN", "Inf" and hex-float forms, and Go's
+// float64->int64 conversion SATURATES rather than erroring, so a hostile or
+// merely broken catalog value reaches the spend accumulator as either
+// math.MaxInt64 or a negative number.
+//
+// Both break -max-cloud-spend, which is the one hard egress-cost control this
+// proxy ships: a negative price makes the day's accumulated spend go DOWN on
+// every request, so the cap never trips, and the poisoned total is persisted
+// to disk and survives a restart. Reject instead, and fall back to "unknown
+// price" — the caller already handles that.
+// maxTokenPriceUSD is a sanity ceiling, not a business rule. A per-token price
+// above a million dollars is a broken catalog, not an expensive model, and
+// admitting one lets the int64 microdollar accumulator saturate: ParseFloat
+// accepts hex-float forms like "0x1p1000" (1.07e+301), which multiplied by a
+// token count and converted to int64 pins spend at math.MaxInt64 on a single
+// request. That trips the cap permanently rather than disabling it — fail
+// closed rather than open, but still wrong, and still driven by a value the
+// catalog chose.
+const maxTokenPriceUSD = 1e6
+
+func usableTokenPrice(value float64) (float64, bool) {
+	if math.IsNaN(value) || math.IsInf(value, 0) || value < 0 {
+		return 0, false
+	}
+	if value > maxTokenPriceUSD {
+		return 0, false
+	}
+	return value, true
+}
+
 func numericField(fields map[string]any, key string) (float64, bool) {
 	if fields == nil {
 		return 0, false
 	}
 	switch value := fields[key].(type) {
 	case float64:
-		return value, true
+		return usableTokenPrice(value)
 	case int:
-		return float64(value), true
+		return usableTokenPrice(float64(value))
 	case int64:
-		return float64(value), true
+		return usableTokenPrice(float64(value))
 	case json.Number:
 		parsed, err := strconv.ParseFloat(string(value), 64)
-		return parsed, err == nil
+		if err != nil {
+			return 0, false
+		}
+		return usableTokenPrice(parsed)
 	case string:
 		parsed, err := strconv.ParseFloat(strings.TrimSpace(value), 64)
-		return parsed, err == nil
+		if err != nil {
+			return 0, false
+		}
+		return usableTokenPrice(parsed)
 	default:
 		return 0, false
 	}
