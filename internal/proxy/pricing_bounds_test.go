@@ -73,7 +73,7 @@ func TestAnUnusablePriceCannotDriveSpendNegative(t *testing.T) {
 
 func TestUsableTokenPriceIsTotal(t *testing.T) {
 	for _, v := range []float64{
-		0, 1, 1e-9, 1e9, math.MaxFloat64, -0.0,
+		0, 1, 1e-9, 1e9, math.MaxFloat64,
 		math.NaN(), math.Inf(1), math.Inf(-1), -1, -math.MaxFloat64,
 	} {
 		got, ok := usableTokenPrice(v)
